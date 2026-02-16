@@ -1,0 +1,415 @@
+          table_name           | ordinal_position |       column_name       |        data_type         | is_nullable 
+-------------------------------+------------------+-------------------------+--------------------------+-------------
+ channel                       |                1 | ChannelID               | text                     | YES
+ channel                       |                2 | ChannelDescr            | text                     | YES
+ channel                       |                3 | Level                   | integer                  | YES
+ channel                       |                4 | IsActive                | boolean                  | YES
+ classified_forecast_elements  |                1 | ProductID               | text                     | NO
+ classified_forecast_elements  |                2 | ChannelID               | text                     | NO
+ classified_forecast_elements  |                3 | LocationID              | text                     | NO
+ classified_forecast_elements  |                4 | Period                  | text                     | NO
+ classified_forecast_elements  |                5 | ADI                     | double precision         | YES
+ classified_forecast_elements  |                6 | CV2                     | double precision         | YES
+ classified_forecast_elements  |                7 | Category                | text                     | NO
+ classified_forecast_elements  |                8 | Algorithm               | text                     | NO
+ classified_forecast_elements  |                9 | CreatedAt               | timestamp with time zone | NO
+ classified_forecast_elements  |               10 | UpdatedAt               | timestamp with time zone | NO
+ cleanse_profiles              |                1 | id                      | integer                  | NO
+ cleanse_profiles              |                2 | name                    | text                     | NO
+ cleanse_profiles              |                3 | config                  | jsonb                    | NO
+ cleanse_profiles              |                4 | created_at              | timestamp with time zone | NO
+ forecast_111_daily            |                1 | ProductID               | text                     | YES
+ forecast_111_daily            |                2 | ChannelID               | text                     | YES
+ forecast_111_daily            |                3 | LocationID              | text                     | YES
+ forecast_111_daily            |                4 | StartDate               | date                     | YES
+ forecast_111_daily            |                5 | EndDate                 | date                     | YES
+ forecast_111_daily            |                6 | Period                  | text                     | YES
+ forecast_111_daily            |                7 | Qty                     | text                     | YES
+ forecast_111_daily            |                8 | UOM                     | text                     | YES
+ forecast_111_daily            |                9 | NetPrice                | double precision         | YES
+ forecast_111_daily            |               10 | ListPrice               | double precision         | YES
+ forecast_111_daily            |               11 | ForecastQty             | double precision         | YES
+ forecast_111_daily            |               12 | Method                  | text                     | YES
+ forecast_111_daily_baseline   |                1 | ProductID               | text                     | YES
+ forecast_111_daily_baseline   |                2 | ChannelID               | text                     | YES
+ forecast_111_daily_baseline   |                3 | LocationID              | text                     | YES
+ forecast_111_daily_baseline   |                4 | StartDate               | date                     | YES
+ forecast_111_daily_baseline   |                5 | EndDate                 | date                     | YES
+ forecast_111_daily_baseline   |                6 | Period                  | text                     | YES
+ forecast_111_daily_baseline   |                7 | Qty                     | text                     | YES
+ forecast_111_daily_baseline   |                8 | UOM                     | text                     | YES
+ forecast_111_daily_baseline   |                9 | NetPrice                | double precision         | YES
+ forecast_111_daily_baseline   |               10 | ListPrice               | double precision         | YES
+ forecast_111_daily_baseline   |               11 | ForecastQty             | double precision         | YES
+ forecast_111_daily_baseline   |               12 | Method                  | text                     | YES
+ forecast_111_monthly          |                1 | ProductID               | text                     | YES
+ forecast_111_monthly          |                2 | ChannelID               | text                     | YES
+ forecast_111_monthly          |                3 | LocationID              | text                     | YES
+ forecast_111_monthly          |                4 | StartDate               | date                     | YES
+ forecast_111_monthly          |                5 | EndDate                 | date                     | YES
+ forecast_111_monthly          |                6 | Period                  | text                     | YES
+ forecast_111_monthly          |                7 | Qty                     | text                     | YES
+ forecast_111_monthly          |                8 | UOM                     | text                     | YES
+ forecast_111_monthly          |                9 | NetPrice                | double precision         | YES
+ forecast_111_monthly          |               10 | ListPrice               | double precision         | YES
+ forecast_111_monthly          |               11 | ForecastQty             | double precision         | YES
+ forecast_111_monthly          |               12 | Method                  | text                     | YES
+ forecast_111_monthly_baseline |                1 | ProductID               | text                     | YES
+ forecast_111_monthly_baseline |                2 | ChannelID               | text                     | YES
+ forecast_111_monthly_baseline |                3 | LocationID              | text                     | YES
+ forecast_111_monthly_baseline |                4 | StartDate               | date                     | YES
+ forecast_111_monthly_baseline |                5 | EndDate                 | date                     | YES
+ forecast_111_monthly_baseline |                6 | Period                  | text                     | YES
+ forecast_111_monthly_baseline |                7 | Qty                     | text                     | YES
+ forecast_111_monthly_baseline |                8 | UOM                     | text                     | YES
+ forecast_111_monthly_baseline |                9 | NetPrice                | double precision         | YES
+ forecast_111_monthly_baseline |               10 | ListPrice               | double precision         | YES
+ forecast_111_monthly_baseline |               11 | ForecastQty             | double precision         | YES
+ forecast_111_monthly_baseline |               12 | Method                  | text                     | YES
+ forecast_111_weekly           |                1 | ProductID               | text                     | YES
+ forecast_111_weekly           |                2 | ChannelID               | text                     | YES
+ forecast_111_weekly           |                3 | LocationID              | text                     | YES
+ forecast_111_weekly           |                4 | StartDate               | date                     | YES
+ forecast_111_weekly           |                5 | EndDate                 | date                     | YES
+ forecast_111_weekly           |                6 | Period                  | text                     | YES
+ forecast_111_weekly           |                7 | Qty                     | text                     | YES
+ forecast_111_weekly           |                8 | UOM                     | text                     | YES
+ forecast_111_weekly           |                9 | NetPrice                | double precision         | YES
+ forecast_111_weekly           |               10 | ListPrice               | double precision         | YES
+ forecast_111_weekly           |               11 | ForecastQty             | double precision         | YES
+ forecast_111_weekly           |               12 | Method                  | text                     | YES
+ forecast_111_weekly_baseline  |                1 | ProductID               | text                     | YES
+ forecast_111_weekly_baseline  |                2 | ChannelID               | text                     | YES
+ forecast_111_weekly_baseline  |                3 | LocationID              | text                     | YES
+ forecast_111_weekly_baseline  |                4 | StartDate               | date                     | YES
+ forecast_111_weekly_baseline  |                5 | EndDate                 | date                     | YES
+ forecast_111_weekly_baseline  |                6 | Period                  | text                     | YES
+ forecast_111_weekly_baseline  |                7 | Qty                     | text                     | YES
+ forecast_111_weekly_baseline  |                8 | UOM                     | text                     | YES
+ forecast_111_weekly_baseline  |                9 | NetPrice                | double precision         | YES
+ forecast_111_weekly_baseline  |               10 | ListPrice               | double precision         | YES
+ forecast_111_weekly_baseline  |               11 | ForecastQty             | double precision         | YES
+ forecast_111_weekly_baseline  |               12 | Method                  | text                     | YES
+ forecast_121_daily            |                1 | ProductID               | text                     | YES
+ forecast_121_daily            |                2 | ChannelID               | text                     | YES
+ forecast_121_daily            |                3 | LocationID              | text                     | YES
+ forecast_121_daily            |                4 | StartDate               | date                     | YES
+ forecast_121_daily            |                5 | EndDate                 | date                     | YES
+ forecast_121_daily            |                6 | Period                  | text                     | YES
+ forecast_121_daily            |                7 | Qty                     | text                     | YES
+ forecast_121_daily            |                8 | UOM                     | text                     | YES
+ forecast_121_daily            |                9 | NetPrice                | double precision         | YES
+ forecast_121_daily            |               10 | ListPrice               | double precision         | YES
+ forecast_121_daily            |               11 | ForecastQty             | double precision         | YES
+ forecast_121_daily            |               12 | Method                  | text                     | YES
+ forecast_121_daily_baseline   |                1 | ProductID               | text                     | YES
+ forecast_121_daily_baseline   |                2 | ChannelID               | text                     | YES
+ forecast_121_daily_baseline   |                3 | LocationID              | text                     | YES
+ forecast_121_daily_baseline   |                4 | StartDate               | date                     | YES
+ forecast_121_daily_baseline   |                5 | EndDate                 | date                     | YES
+ forecast_121_daily_baseline   |                6 | Period                  | text                     | YES
+ forecast_121_daily_baseline   |                7 | Qty                     | text                     | YES
+ forecast_121_daily_baseline   |                8 | UOM                     | text                     | YES
+ forecast_121_daily_baseline   |                9 | NetPrice                | double precision         | YES
+ forecast_121_daily_baseline   |               10 | ListPrice               | double precision         | YES
+ forecast_121_daily_baseline   |               11 | ForecastQty             | double precision         | YES
+ forecast_121_daily_baseline   |               12 | Method                  | text                     | YES
+ forecast_121_monthly          |                1 | ProductID               | text                     | YES
+ forecast_121_monthly          |                2 | ChannelID               | text                     | YES
+ forecast_121_monthly          |                3 | LocationID              | text                     | YES
+ forecast_121_monthly          |                4 | StartDate               | date                     | YES
+ forecast_121_monthly          |                5 | EndDate                 | date                     | YES
+ forecast_121_monthly          |                6 | Period                  | text                     | YES
+ forecast_121_monthly          |                7 | Qty                     | text                     | YES
+ forecast_121_monthly          |                8 | UOM                     | text                     | YES
+ forecast_121_monthly          |                9 | NetPrice                | double precision         | YES
+ forecast_121_monthly          |               10 | ListPrice               | double precision         | YES
+ forecast_121_monthly          |               11 | ForecastQty             | double precision         | YES
+ forecast_121_monthly          |               12 | Method                  | text                     | YES
+ forecast_121_monthly_baseline |                1 | ProductID               | text                     | YES
+ forecast_121_monthly_baseline |                2 | ChannelID               | text                     | YES
+ forecast_121_monthly_baseline |                3 | LocationID              | text                     | YES
+ forecast_121_monthly_baseline |                4 | StartDate               | date                     | YES
+ forecast_121_monthly_baseline |                5 | EndDate                 | date                     | YES
+ forecast_121_monthly_baseline |                6 | Period                  | text                     | YES
+ forecast_121_monthly_baseline |                7 | Qty                     | text                     | YES
+ forecast_121_monthly_baseline |                8 | UOM                     | text                     | YES
+ forecast_121_monthly_baseline |                9 | NetPrice                | double precision         | YES
+ forecast_121_monthly_baseline |               10 | ListPrice               | double precision         | YES
+ forecast_121_monthly_baseline |               11 | ForecastQty             | double precision         | YES
+ forecast_121_monthly_baseline |               12 | Method                  | text                     | YES
+ forecast_121_weekly           |                1 | ProductID               | text                     | YES
+ forecast_121_weekly           |                2 | ChannelID               | text                     | YES
+ forecast_121_weekly           |                3 | LocationID              | text                     | YES
+ forecast_121_weekly           |                4 | StartDate               | date                     | YES
+ forecast_121_weekly           |                5 | EndDate                 | date                     | YES
+ forecast_121_weekly           |                6 | Period                  | text                     | YES
+ forecast_121_weekly           |                7 | Qty                     | text                     | YES
+ forecast_121_weekly           |                8 | UOM                     | text                     | YES
+ forecast_121_weekly           |                9 | NetPrice                | double precision         | YES
+ forecast_121_weekly           |               10 | ListPrice               | double precision         | YES
+ forecast_121_weekly           |               11 | ForecastQty             | double precision         | YES
+ forecast_121_weekly           |               12 | Method                  | text                     | YES
+ forecast_121_weekly_baseline  |                1 | ProductID               | text                     | YES
+ forecast_121_weekly_baseline  |                2 | ChannelID               | text                     | YES
+ forecast_121_weekly_baseline  |                3 | LocationID              | text                     | YES
+ forecast_121_weekly_baseline  |                4 | StartDate               | date                     | YES
+ forecast_121_weekly_baseline  |                5 | EndDate                 | date                     | YES
+ forecast_121_weekly_baseline  |                6 | Period                  | text                     | YES
+ forecast_121_weekly_baseline  |                7 | Qty                     | text                     | YES
+ forecast_121_weekly_baseline  |                8 | UOM                     | text                     | YES
+ forecast_121_weekly_baseline  |                9 | NetPrice                | double precision         | YES
+ forecast_121_weekly_baseline  |               10 | ListPrice               | double precision         | YES
+ forecast_121_weekly_baseline  |               11 | ForecastQty             | double precision         | YES
+ forecast_121_weekly_baseline  |               12 | Method                  | text                     | YES
+ forecast_221_daily            |                1 | ProductID               | text                     | YES
+ forecast_221_daily            |                2 | ChannelID               | text                     | YES
+ forecast_221_daily            |                3 | LocationID              | text                     | YES
+ forecast_221_daily            |                4 | StartDate               | date                     | YES
+ forecast_221_daily            |                5 | EndDate                 | date                     | YES
+ forecast_221_daily            |                6 | Period                  | text                     | YES
+ forecast_221_daily            |                7 | Qty                     | text                     | YES
+ forecast_221_daily            |                8 | UOM                     | text                     | YES
+ forecast_221_daily            |                9 | NetPrice                | double precision         | YES
+ forecast_221_daily            |               10 | ListPrice               | double precision         | YES
+ forecast_221_daily            |               11 | ForecastQty             | double precision         | YES
+ forecast_221_daily            |               12 | Method                  | text                     | YES
+ forecast_221_daily_baseline   |                1 | ProductID               | text                     | YES
+ forecast_221_daily_baseline   |                2 | ChannelID               | text                     | YES
+ forecast_221_daily_baseline   |                3 | LocationID              | text                     | YES
+ forecast_221_daily_baseline   |                4 | StartDate               | date                     | YES
+ forecast_221_daily_baseline   |                5 | EndDate                 | date                     | YES
+ forecast_221_daily_baseline   |                6 | Period                  | text                     | YES
+ forecast_221_daily_baseline   |                7 | Qty                     | text                     | YES
+ forecast_221_daily_baseline   |                8 | UOM                     | text                     | YES
+ forecast_221_daily_baseline   |                9 | NetPrice                | double precision         | YES
+ forecast_221_daily_baseline   |               10 | ListPrice               | double precision         | YES
+ forecast_221_daily_baseline   |               11 | ForecastQty             | double precision         | YES
+ forecast_221_daily_baseline   |               12 | Method                  | text                     | YES
+ forecast_221_monthly          |                1 | ProductID               | text                     | YES
+ forecast_221_monthly          |                2 | ChannelID               | text                     | YES
+ forecast_221_monthly          |                3 | LocationID              | text                     | YES
+ forecast_221_monthly          |                4 | StartDate               | date                     | YES
+ forecast_221_monthly          |                5 | EndDate                 | date                     | YES
+ forecast_221_monthly          |                6 | Period                  | text                     | YES
+ forecast_221_monthly          |                7 | Qty                     | text                     | YES
+ forecast_221_monthly          |                8 | UOM                     | text                     | YES
+ forecast_221_monthly          |                9 | NetPrice                | double precision         | YES
+ forecast_221_monthly          |               10 | ListPrice               | double precision         | YES
+ forecast_221_monthly          |               11 | ForecastQty             | double precision         | YES
+ forecast_221_monthly          |               12 | Method                  | text                     | YES
+ forecast_221_monthly_baseline |                1 | ProductID               | text                     | YES
+ forecast_221_monthly_baseline |                2 | ChannelID               | text                     | YES
+ forecast_221_monthly_baseline |                3 | LocationID              | text                     | YES
+ forecast_221_monthly_baseline |                4 | StartDate               | date                     | YES
+ forecast_221_monthly_baseline |                5 | EndDate                 | date                     | YES
+ forecast_221_monthly_baseline |                6 | Period                  | text                     | YES
+ forecast_221_monthly_baseline |                7 | Qty                     | text                     | YES
+ forecast_221_monthly_baseline |                8 | UOM                     | text                     | YES
+ forecast_221_monthly_baseline |                9 | NetPrice                | double precision         | YES
+ forecast_221_monthly_baseline |               10 | ListPrice               | double precision         | YES
+ forecast_221_monthly_baseline |               11 | ForecastQty             | double precision         | YES
+ forecast_221_monthly_baseline |               12 | Method                  | text                     | YES
+ forecast_221_weekly           |                1 | ProductID               | text                     | YES
+ forecast_221_weekly           |                2 | ChannelID               | text                     | YES
+ forecast_221_weekly           |                3 | LocationID              | text                     | YES
+ forecast_221_weekly           |                4 | StartDate               | date                     | YES
+ forecast_221_weekly           |                5 | EndDate                 | date                     | YES
+ forecast_221_weekly           |                6 | Period                  | text                     | YES
+ forecast_221_weekly           |                7 | Qty                     | text                     | YES
+ forecast_221_weekly           |                8 | UOM                     | text                     | YES
+ forecast_221_weekly           |                9 | NetPrice                | double precision         | YES
+ forecast_221_weekly           |               10 | ListPrice               | double precision         | YES
+ forecast_221_weekly           |               11 | ForecastQty             | double precision         | YES
+ forecast_221_weekly           |               12 | Method                  | text                     | YES
+ forecast_221_weekly_baseline  |                1 | ProductID               | text                     | YES
+ forecast_221_weekly_baseline  |                2 | ChannelID               | text                     | YES
+ forecast_221_weekly_baseline  |                3 | LocationID              | text                     | YES
+ forecast_221_weekly_baseline  |                4 | StartDate               | date                     | YES
+ forecast_221_weekly_baseline  |                5 | EndDate                 | date                     | YES
+ forecast_221_weekly_baseline  |                6 | Period                  | text                     | YES
+ forecast_221_weekly_baseline  |                7 | Qty                     | text                     | YES
+ forecast_221_weekly_baseline  |                8 | UOM                     | text                     | YES
+ forecast_221_weekly_baseline  |                9 | NetPrice                | double precision         | YES
+ forecast_221_weekly_baseline  |               10 | ListPrice               | double precision         | YES
+ forecast_221_weekly_baseline  |               11 | ForecastQty             | double precision         | YES
+ forecast_221_weekly_baseline  |               12 | Method                  | text                     | YES
+ forecastelement               |                1 | ProductID               | text                     | YES
+ forecastelement               |                2 | ChannelID               | text                     | YES
+ forecastelement               |                3 | LocationID              | text                     | YES
+ forecastelement               |                4 | Level                   | integer                  | YES
+ forecastelement               |                5 | IsActive                | boolean                  | YES
+ history_111_daily             |                1 | ProductID               | text                     | YES
+ history_111_daily             |                2 | ChannelID               | text                     | YES
+ history_111_daily             |                3 | LocationID              | text                     | YES
+ history_111_daily             |                4 | Qty                     | double precision         | YES
+ history_111_daily             |                5 | Period                  | text                     | YES
+ history_111_daily             |                6 | StartDate               | date                     | YES
+ history_111_daily             |                7 | EndDate                 | text                     | YES
+ history_111_daily             |                8 | UOM                     | text                     | YES
+ history_111_daily             |                9 | NetPrice                | double precision         | YES
+ history_111_daily             |               10 | ListPrice               | double precision         | YES
+ history_111_monthly           |                1 | ProductID               | text                     | YES
+ history_111_monthly           |                2 | ChannelID               | text                     | YES
+ history_111_monthly           |                3 | LocationID              | text                     | YES
+ history_111_monthly           |                4 | Qty                     | double precision         | YES
+ history_111_monthly           |                5 | Period                  | text                     | YES
+ history_111_monthly           |                6 | StartDate               | date                     | YES
+ history_111_monthly           |                7 | EndDate                 | date                     | YES
+ history_111_monthly           |                8 | UOM                     | text                     | YES
+ history_111_monthly           |                9 | NetPrice                | double precision         | YES
+ history_111_monthly           |               10 | ListPrice               | double precision         | YES
+ history_111_weekly            |                1 | ProductID               | text                     | YES
+ history_111_weekly            |                2 | ChannelID               | text                     | YES
+ history_111_weekly            |                3 | LocationID              | text                     | YES
+ history_111_weekly            |                4 | Qty                     | double precision         | YES
+ history_111_weekly            |                5 | Period                  | text                     | YES
+ history_111_weekly            |                6 | StartDate               | date                     | YES
+ history_111_weekly            |                7 | EndDate                 | date                     | YES
+ history_111_weekly            |                8 | UOM                     | text                     | YES
+ history_111_weekly            |                9 | NetPrice                | double precision         | YES
+ history_111_weekly            |               10 | ListPrice               | double precision         | YES
+ history_121_daily             |                1 | ProductID               | text                     | YES
+ history_121_daily             |                2 | ChannelID               | text                     | YES
+ history_121_daily             |                3 | LocationID              | text                     | YES
+ history_121_daily             |                4 | Qty                     | double precision         | YES
+ history_121_daily             |                5 | Period                  | text                     | YES
+ history_121_daily             |                6 | StartDate               | date                     | YES
+ history_121_daily             |                7 | EndDate                 | text                     | YES
+ history_121_daily             |                8 | UOM                     | text                     | YES
+ history_121_daily             |                9 | NetPrice                | double precision         | YES
+ history_121_daily             |               10 | ListPrice               | double precision         | YES
+ history_121_monthly           |                1 | ProductID               | text                     | YES
+ history_121_monthly           |                2 | ChannelID               | text                     | YES
+ history_121_monthly           |                3 | LocationID              | text                     | YES
+ history_121_monthly           |                4 | Qty                     | double precision         | YES
+ history_121_monthly           |                5 | Period                  | text                     | YES
+ history_121_monthly           |                6 | StartDate               | date                     | YES
+ history_121_monthly           |                7 | EndDate                 | date                     | YES
+ history_121_monthly           |                8 | UOM                     | text                     | YES
+ history_121_monthly           |                9 | NetPrice                | double precision         | YES
+ history_121_monthly           |               10 | ListPrice               | double precision         | YES
+ history_121_weekly            |                1 | ProductID               | text                     | YES
+ history_121_weekly            |                2 | ChannelID               | text                     | YES
+ history_121_weekly            |                3 | LocationID              | text                     | YES
+ history_121_weekly            |                4 | Qty                     | double precision         | YES
+ history_121_weekly            |                5 | Period                  | text                     | YES
+ history_121_weekly            |                6 | StartDate               | date                     | YES
+ history_121_weekly            |                7 | EndDate                 | date                     | YES
+ history_121_weekly            |                8 | UOM                     | text                     | YES
+ history_121_weekly            |                9 | NetPrice                | double precision         | YES
+ history_121_weekly            |               10 | ListPrice               | double precision         | YES
+ history_221_daily             |                1 | ProductID               | text                     | YES
+ history_221_daily             |                2 | ChannelID               | text                     | YES
+ history_221_daily             |                3 | LocationID              | text                     | YES
+ history_221_daily             |                4 | Qty                     | double precision         | YES
+ history_221_daily             |                5 | Period                  | text                     | YES
+ history_221_daily             |                6 | StartDate               | date                     | YES
+ history_221_daily             |                7 | EndDate                 | text                     | YES
+ history_221_daily             |                8 | UOM                     | text                     | YES
+ history_221_daily             |                9 | NetPrice                | double precision         | YES
+ history_221_daily             |               10 | ListPrice               | double precision         | YES
+ history_221_monthly           |                1 | ProductID               | text                     | YES
+ history_221_monthly           |                2 | ChannelID               | text                     | YES
+ history_221_monthly           |                3 | LocationID              | text                     | YES
+ history_221_monthly           |                4 | Qty                     | double precision         | YES
+ history_221_monthly           |                5 | Period                  | text                     | YES
+ history_221_monthly           |                6 | StartDate               | date                     | YES
+ history_221_monthly           |                7 | EndDate                 | date                     | YES
+ history_221_monthly           |                8 | UOM                     | text                     | YES
+ history_221_monthly           |                9 | NetPrice                | double precision         | YES
+ history_221_monthly           |               10 | ListPrice               | double precision         | YES
+ history_221_weekly            |                1 | ProductID               | text                     | YES
+ history_221_weekly            |                2 | ChannelID               | text                     | YES
+ history_221_weekly            |                3 | LocationID              | text                     | YES
+ history_221_weekly            |                4 | Qty                     | double precision         | YES
+ history_221_weekly            |                5 | Period                  | text                     | YES
+ history_221_weekly            |                6 | StartDate               | date                     | YES
+ history_221_weekly            |                7 | EndDate                 | date                     | YES
+ history_221_weekly            |                8 | UOM                     | text                     | YES
+ history_221_weekly            |                9 | NetPrice                | double precision         | YES
+ history_221_weekly            |               10 | ListPrice               | double precision         | YES
+ history_cleansed              |                1 | id                      | bigint                   | NO
+ history_cleansed              |                2 | ProductID               | text                     | NO
+ history_cleansed              |                3 | ChannelID               | text                     | NO
+ history_cleansed              |                4 | LocationID              | text                     | NO
+ history_cleansed              |                5 | StartDate               | date                     | NO
+ history_cleansed              |                6 | EndDate                 | date                     | NO
+ history_cleansed              |                7 | Period                  | text                     | NO
+ history_cleansed              |                8 | Qty                     | double precision         | NO
+ history_cleansed              |                9 | Level                   | text                     | YES
+ history_cleansed              |               10 | CreatedAt               | timestamp with time zone | NO
+ history_cleansed              |               11 | Type                    | text                     | NO
+ history_cleansed              |               12 | NetPrice                | double precision         | NO
+ history_cleansed              |               13 | ListPrice               | double precision         | NO
+ location                      |                1 | LocationID              | text                     | YES
+ location                      |                2 | LocationDescr           | text                     | YES
+ location                      |                3 | Level                   | integer                  | YES
+ location                      |                4 | IsActive                | boolean                  | YES
+ product                       |                1 | ProductID               | text                     | YES
+ product                       |                2 | ProductDescr            | text                     | YES
+ product                       |                3 | Level                   | integer                  | YES
+ product                       |                4 | BusinessUnit            | text                     | YES
+ product                       |                5 | IsDailyForecastRequired | boolean                  | YES
+ product                       |                6 | IsNew                   | boolean                  | YES
+ product                       |                7 | ProductFamily           | text                     | YES
+ promotions                    |                1 | PromoID                 | text                     | YES
+ promotions                    |                2 | PromoName               | text                     | YES
+ promotions                    |                3 | StartDate               | date                     | YES
+ promotions                    |                4 | EndDate                 | date                     | YES
+ promotions                    |                5 | ProductID               | text                     | YES
+ promotions                    |                6 | ChannelID               | text                     | YES
+ promotions                    |                7 | LocationID              | text                     | YES
+ promotions                    |                8 | PromoLevel              | integer                  | YES
+ promotions                    |                9 | DiscountPct             | integer                  | YES
+ promotions                    |               10 | UpliftPct               | integer                  | YES
+ promotions                    |               11 | Notes                   | text                     | YES
+ saved_searches                |                1 | id                      | integer                  | NO
+ saved_searches                |                2 | name                    | text                     | NO
+ saved_searches                |                3 | query                   | text                     | NO
+ saved_searches                |                4 | created_at              | timestamp with time zone | NO
+ v_forecast_baseline           |                1 | Level                   | text                     | YES
+ v_forecast_baseline           |                2 | Model                   | text                     | YES
+ v_forecast_baseline           |                3 | ProductID               | text                     | YES
+ v_forecast_baseline           |                4 | ChannelID               | text                     | YES
+ v_forecast_baseline           |                5 | LocationID              | text                     | YES
+ v_forecast_baseline           |                6 | StartDate               | date                     | YES
+ v_forecast_baseline           |                7 | EndDate                 | date                     | YES
+ v_forecast_baseline           |                8 | Period                  | text                     | YES
+ v_forecast_baseline           |                9 | ForecastQty             | double precision         | YES
+ v_forecast_baseline           |               10 | UOM                     | text                     | YES
+ v_forecast_baseline           |               11 | NetPrice                | double precision         | YES
+ v_forecast_baseline           |               12 | ListPrice               | double precision         | YES
+ v_forecast_baseline           |               13 | Method                  | text                     | YES
+ v_forecast_feat               |                1 | Level                   | text                     | YES
+ v_forecast_feat               |                2 | Model                   | text                     | YES
+ v_forecast_feat               |                3 | ProductID               | text                     | YES
+ v_forecast_feat               |                4 | ChannelID               | text                     | YES
+ v_forecast_feat               |                5 | LocationID              | text                     | YES
+ v_forecast_feat               |                6 | StartDate               | date                     | YES
+ v_forecast_feat               |                7 | EndDate                 | date                     | YES
+ v_forecast_feat               |                8 | Period                  | text                     | YES
+ v_forecast_feat               |                9 | ForecastQty             | double precision         | YES
+ v_forecast_feat               |               10 | UOM                     | text                     | YES
+ v_forecast_feat               |               11 | NetPrice                | double precision         | YES
+ v_forecast_feat               |               12 | ListPrice               | double precision         | YES
+ v_forecast_feat               |               13 | Method                  | text                     | YES
+ v_history                     |                1 | Level                   | text                     | YES
+ v_history                     |                2 | ProductID               | text                     | YES
+ v_history                     |                3 | ChannelID               | text                     | YES
+ v_history                     |                4 | LocationID              | text                     | YES
+ v_history                     |                5 | StartDate               | date                     | YES
+ v_history                     |                6 | EndDate                 | date                     | YES
+ v_history                     |                7 | Period                  | text                     | YES
+ v_history                     |                8 | Qty                     | double precision         | YES
+ v_history                     |                9 | NetPrice                | double precision         | YES
+ v_history                     |               10 | ListPrice               | double precision         | YES
+ v_history                     |               11 | Type                    | text                     | YES
+ weather_daily                 |                1 | LocationID              | text                     | YES
+ weather_daily                 |                2 | Date                    | date                     | YES
+ weather_daily                 |                3 | TavgC                   | double precision         | YES
+ weather_daily                 |                4 | TminC                   | double precision         | YES
+ weather_daily                 |                5 | TmaxC                   | double precision         | YES
+ weather_daily                 |                6 | PrecipMM                | double precision         | YES
+ weather_daily                 |                7 | WindMaxMS               | double precision         | YES
+ weather_daily                 |                8 | SunHours                | double precision         | YES

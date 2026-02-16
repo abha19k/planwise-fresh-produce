@@ -1,0 +1,216 @@
+<div class="p-4 space-y-6">
+
+  <!-- =========================
+       CREATE / BUILD SEARCH
+       ========================= -->
+  <div class="border rounded p-4 space-y-4">
+    <h2 class="text-xl font-semibold">Create Saved Search</h2>
+
+    <!-- Builder row -->
+    <div class="flex gap-3 items-end flex-wrap">
+      <div>
+        <label class="block text-sm mb-1">From</label>
+        <select class="border rounded p-2" [ngModel]="domain()" (ngModelChange)="onDomainChange($event)">
+          <option value="product">Product</option>
+          <option value="channel">Channel</option>
+          <option value="location">Location</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1">Field</label>
+        <select class="border rounded p-2" [ngModel]="fieldKey()" (ngModelChange)="onFieldChange($event)">
+          <ng-container *ngFor="let f of fields">
+            <option *ngIf="f.domain === domain()" [value]="f.key">{{ f.label }}</option>
+          </ng-container>
+        </select>
+      </div>
+
+      <div class="min-w-[260px]">
+        <label class="block text-sm mb-1">Value</label>
+        <select class="border rounded p-2 w-full"
+                [ngModel]="selectedValue()"
+                (ngModelChange)="selectedValue.set($event)">
+          <option *ngFor="let v of fieldValues()" [value]="v">{{ v }}</option>
+        </select>
+        <div class="text-xs text-gray-500 mt-1">“All” expands to every distinct value for the chosen field.</div>
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1">Combine with</label>
+        <select class="border rounded p-2" [ngModel]="nextOp()" (ngModelChange)="nextOp.set($event)">
+          <option value="AND">AND</option>
+          <option value="OR">OR</option>
+        </select>
+      </div>
+
+      <button class="px-3 py-2 border rounded" (click)="addCriterion()">Add</button>
+    </div>
+
+    <!-- Criteria list -->
+    <div *ngIf="criteria().length" class="border rounded p-3">
+      <div class="text-sm text-gray-600 mb-2">
+        Criteria (AND has higher precedence than OR; use parentheses via “All” expansions only).
+      </div>
+
+      <ul class="space-y-2">
+        <li *ngFor="let c of criteria(); let i = index" class="flex items-center gap-2 flex-wrap">
+          <ng-container *ngIf="i > 0">
+            <select class="border rounded p-1" [ngModel]="c.op || 'AND'" (ngModelChange)="setOp(i, $event)">
+              <option value="AND">AND</option>
+              <option value="OR">OR</option>
+            </select>
+          </ng-container>
+
+          <code class="px-2 py-1 bg-gray-50 border rounded">{{ c.key }}:{{ c.value }}</code>
+
+          <button class="ml-2 underline text-sm" (click)="removeCriterion(i)">remove</button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Query preview -->
+    <div>
+      <div class="text-sm text-gray-600 mb-1">Will save as query:</div>
+      <code class="block p-2 bg-gray-50 border rounded min-h-[40px] break-all">
+        {{ builtQuery() || '(none)' }}
+      </code>
+    </div>
+
+    <!-- Save -->
+    <div class="flex gap-2 items-center flex-wrap">
+      <input class="p-2 border rounded min-w-[260px]"
+             [ngModel]="saveName()"
+             (ngModelChange)="saveName.set($event)"
+             placeholder="Save as… (name)" />
+      <button class="px-3 py-2 border rounded" (click)="save()" [disabled]="saving()">
+        Save Query
+      </button>
+
+      <button class="px-3 py-2 border rounded" (click)="refreshSaved()" [disabled]="loading()">
+        Refresh List
+      </button>
+    </div>
+
+    <div *ngIf="error()" class="text-red-600">{{ error() }}</div>
+    <div *ngIf="savedOk()" class="text-green-700">Saved!</div>
+  </div>
+
+
+  <!-- =========================
+       SAVED SEARCHES LIST
+       ========================= -->
+  <div class="border rounded p-4 space-y-4">
+    <div class="flex items-end justify-between gap-3 flex-wrap">
+      <h2 class="text-xl font-semibold">Saved Searches</h2>
+
+      <div class="flex items-center gap-2">
+        <input
+          class="p-2 border rounded min-w-[260px]"
+          placeholder="Filter by name or query…"
+          [ngModel]="filter()"
+          (ngModelChange)="filter.set($event)"
+        />
+        <button class="px-3 py-2 border rounded" (click)="refreshSaved()" [disabled]="loading()">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- LEFT: list -->
+      <div class="border rounded p-3">
+        <div class="text-sm text-gray-600 mb-2">
+          {{ filteredRows().length }} saved searches
+          <span *ngIf="loading()"> • loading…</span>
+        </div>
+
+        <div class="space-y-2 max-h-[520px] overflow-auto">
+          <button
+            *ngFor="let r of filteredRows()"
+            class="w-full text-left border rounded p-2 hover:bg-gray-50"
+            [class.bg-gray-50]="selectedSaved()?.id === r.id"
+            (click)="selectSaved(r)"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-medium">{{ r.name }}</div>
+                <div class="text-xs text-gray-600 break-all">{{ r.query }}</div>
+              </div>
+              <div class="text-xs text-gray-500 whitespace-nowrap">{{ r.created_at }}</div>
+            </div>
+          </button>
+
+          <div *ngIf="!filteredRows().length && !loading()" class="text-sm text-gray-500">
+            No saved searches yet.
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: details + run -->
+      <div class="border rounded p-3" *ngIf="selectedSaved(); else noSelection">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="text-lg font-semibold">{{ selectedSaved()?.name }}</div>
+            <div class="text-xs text-gray-600">Created: {{ selectedSaved()?.created_at }}</div>
+          </div>
+
+          <div class="flex gap-2">
+            <button class="px-3 py-2 border rounded" (click)="copyQuery()">Copy query</button>
+            <button class="px-3 py-2 border rounded" (click)="deleteSelected()" [disabled]="loading()">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <div class="text-sm text-gray-600 mb-1">Query</div>
+          <code class="block p-2 bg-gray-50 border rounded break-all">{{ selectedSaved()?.query }}</code>
+        </div>
+
+        <div class="mt-3 flex gap-2 items-center flex-wrap">
+          <button class="px-3 py-2 border rounded" (click)="runSelected()" [disabled]="running()">
+            Run
+          </button>
+          <div class="text-sm text-gray-600" *ngIf="running()">running…</div>
+          <div class="text-sm text-gray-600" *ngIf="!running() && resultCount()">
+            Results: {{ resultCount() }}
+          </div>
+        </div>
+
+        <div *ngIf="runError()" class="text-red-600 mt-2">{{ runError() }}</div>
+
+        <div class="mt-3" *ngIf="resultKeys().length">
+          <div class="text-sm text-gray-600 mb-2">
+            Keys (showing first {{ resultKeys().length }})
+          </div>
+
+          <div class="overflow-auto max-h-[320px] border rounded">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2 border-b">ProductID</th>
+                  <th class="text-left p-2 border-b">ChannelID</th>
+                  <th class="text-left p-2 border-b">LocationID</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let k of resultKeys()" class="hover:bg-gray-50">
+                  <td class="p-2 border-b">{{ k.ProductID }}</td>
+                  <td class="p-2 border-b">{{ k.ChannelID }}</td>
+                  <td class="p-2 border-b">{{ k.LocationID }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noSelection>
+        <div class="border rounded p-6 text-gray-500">
+          Select a saved search to view details and run it.
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+/* Keep the table inside card borders */
+.forecast-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Prevent ugly wrapping inside cells */
+.forecast-table-wrap table th,
+.forecast-table-wrap table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Make columns feel consistent */
+.forecast-table-wrap table {
+  width: 100%;
+}
+
+/* Optional: better spacing */
+.forecast-table-wrap .table th,
+.forecast-table-wrap .table td {
+  padding: 0.6rem 0.75rem;
+
+.forecast-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+}
+}

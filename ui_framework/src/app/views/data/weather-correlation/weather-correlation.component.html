@@ -1,0 +1,393 @@
+<!-- src/app/views/data/weather-correlation/weather-correlation.component.html -->
+
+<div class="container-fluid" style="padding: 16px;">
+  <h2 class="mb-2 fw-bold">External Factor vs Sales Correlation</h2>
+  <div class="text-muted mb-3">
+    Explore correlation between <span class="fw-semibold">weather variables</span> and
+    <span class="fw-semibold">quantities sold</span> for a specific Product–Channel–Location and period
+    (daily / weekly / monthly).
+  </div>
+
+  <c-row class="mb-3">
+    <c-col md="3">
+      <label class="form-label mb-1">Product</label>
+      <select
+        class="form-select"
+        [(ngModel)]="selectedProductId"
+        (ngModelChange)="onSelectionChange()"
+      >
+        <option [ngValue]="''">-- Select Product --</option>
+        <option *ngFor="let p of products" [ngValue]="p.ProductID">
+          {{ p.ProductID }} - {{ p.ProductDescr || 'No description' }}
+        </option>
+      </select>
+    </c-col>
+
+    <c-col md="3">
+      <label class="form-label mb-1">Channel</label>
+      <select
+        class="form-select"
+        [(ngModel)]="selectedChannelId"
+        (ngModelChange)="onSelectionChange()"
+      >
+        <option [ngValue]="''">-- Select Channel --</option>
+        <option *ngFor="let c of channels" [ngValue]="c.ChannelID">
+          {{ c.ChannelID }} - {{ c.ChannelDescr || 'No description' }}
+        </option>
+      </select>
+    </c-col>
+
+    <c-col md="3">
+      <label class="form-label mb-1">Location</label>
+      <select
+        class="form-select"
+        [(ngModel)]="selectedLocationId"
+        (ngModelChange)="onSelectionChange()"
+      >
+        <option [ngValue]="''">-- Select Location --</option>
+        <option *ngFor="let l of locations" [ngValue]="l.LocationID">
+          {{ l.LocationID }} - {{ l.LocationDescr || 'No description' }}
+        </option>
+      </select>
+    </c-col>
+
+    <c-col md="3">
+      <label class="form-label mb-1">Period</label>
+      <select
+        class="form-select"
+        [(ngModel)]="selectedPeriod"
+        (ngModelChange)="onSelectionChange()"
+      >
+        <option *ngFor="let p of periods" [ngValue]="p">
+          {{ p | titlecase }}
+        </option>
+      </select>
+    </c-col>
+  </c-row>
+
+  <c-row class="mb-3">
+    <c-col md="4">
+      <label class="form-label mb-1">Weather metric</label>
+      <select
+        class="form-select"
+        [(ngModel)]="selectedMetric"
+        (ngModelChange)="onMetricChange()"
+      >
+        <option *ngFor="let m of metricOptions" [ngValue]="m.key">
+          {{ m.label }}
+        </option>
+      </select>
+    </c-col>
+
+    <c-col md="4" class="d-flex align-items-end">
+      <button
+        class="btn btn-primary"
+        type="button"
+        (click)="onReloadClick()"
+        [disabled]="!canLoad() || loading"
+      >
+        {{ loading ? 'Loading...' : 'Reload correlation' }}
+      </button>
+    </c-col>
+
+    <c-col md="4" class="d-flex align-items-end">
+      <div *ngIf="errorMessage" class="text-danger small">
+        {{ errorMessage }}
+      </div>
+    </c-col>
+  </c-row>
+
+  <!-- Correlation summary (TOP, full width) -->
+  <c-row>
+    <c-col lg="12" class="mb-3">
+      <c-card>
+        <c-card-header>
+          <div class="fw-semibold">Correlation summary (-1 to +1)</div>
+        </c-card-header>
+        <c-card-body>
+          <div class="mb-3">
+            <div class="small text-muted mb-1">
+              Selected metric: <span class="fw-semibold">{{ getMetricLabel(selectedMetric) }}</span>
+            </div>
+
+            <!-- Correlation bar -->
+            <div class="small mb-1">
+              r =
+              <span class="fw-semibold">
+                {{
+                  corrSelected !== null
+                    ? (corrSelected | number : '1.2-2')
+                    : 'NA'
+                }}
+              </span>
+            </div>
+
+            <div
+              class="position-relative mb-2"
+              style="height: 22px; border-radius: 999px; background: linear-gradient(to right, #dc3545, #f8f9fa, #198754); border: 1px solid #ccc;"
+            >
+              <!-- Center (0) marker -->
+              <div
+                class="position-absolute"
+                style="top: -2px; width: 1px; height: 26px; background-color: rgba(0, 0, 0, 0.3); left: 50%;"
+              ></div>
+
+              <!-- Indicator -->
+              <div
+                class="position-absolute"
+                style="top: -4px; width: 8px; height: 30px; border-radius: 999px; background-color: #0d6efd;"
+                [style.left.%]="corrPercent"
+              ></div>
+            </div>
+
+            <div class="small text-muted mt-1">
+              {{ corrDescription }}
+            </div>
+          </div>
+
+          <hr />
+
+          <!-- Bigger table of all metrics -->
+          <div class="small fw-semibold mb-2">All weather metrics</div>
+          <div class="table-responsive">
+            <table cTable class="table table-striped align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="width: 70%;">Metric</th>
+                  <th class="text-end" style="width: 30%;">r</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let m of metricOptions">
+                  <td>
+                    {{ m.label }}
+                  </td>
+                  <td class="text-end">
+                    <span
+                      *ngIf="correlations[m.key] !== null; else naCorr"
+                      [ngClass]="{
+                        'text-success': correlations[m.key] !== null && correlations[m.key]! > 0.2,
+                        'text-danger': correlations[m.key] !== null && correlations[m.key]! < -0.2
+                      }"
+                    >
+                      {{ correlations[m.key] | number : '1.2-2' }}
+                    </span>
+                    <ng-template #naCorr>
+                      <span class="text-muted">NA</span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </c-card-body>
+        <c-card-footer class="small text-muted">
+          Correlations are computed over the full available history for the selected
+          Product–Channel–Location and period.
+        </c-card-footer>
+      </c-card>
+    </c-col>
+  </c-row>
+
+  <!-- Scatter plot (BOTTOM, full width) -->
+  <c-row>
+    <c-col lg="12" class="mb-3">
+      <c-card>
+        <c-card-header>
+          <div class="fw-semibold">
+            Scatter &amp; quadrants
+            <span class="text-muted small ms-2">
+              ({{ getMetricLabel(selectedMetric) }} vs Quantity)
+            </span>
+          </div>
+        </c-card-header>
+        <c-card-body>
+          <div *ngIf="!weatherSales.length && !loading" class="text-muted">
+            Select Product, Channel, Location and click
+            <span class="fw-semibold">Reload correlation</span> to see the plot.
+          </div>
+
+          <div *ngIf="weatherSales.length">
+            <svg
+              [attr.width]="svgWidth"
+              [attr.height]="svgHeight"
+              style="border: 1px solid #e0e0e0; background-color: #fafafa;"
+            >
+              <!-- Axes labels (X/Y text) -->
+              <text
+                [attr.x]="svgWidth / 2"
+                [attr.y]="svgHeight - 5"
+                text-anchor="middle"
+                class="small"
+              >
+                {{ getMetricLabel(selectedMetric) }}
+              </text>
+              <text
+                [attr.x]="15"
+                [attr.y]="svgHeight / 2"
+                text-anchor="middle"
+                [attr.transform]="'rotate(-90 15 ' + (svgHeight / 2) + ')'"
+                class="small"
+              >
+                Quantity sold
+              </text>
+
+              <!-- Vertical axis line (X = centerX) -->
+              <line
+                [attr.x1]="centerX"
+                [attr.y1]="plotPaddingTop"
+                [attr.x2]="centerX"
+                [attr.y2]="svgHeight - plotPaddingBottom"
+                stroke="#bbbbbb"
+                stroke-width="1"
+                stroke-dasharray="4 4"
+              ></line>
+
+              <!-- Horizontal axis line (Y = centerY) -->
+              <line
+                [attr.x1]="plotPaddingLeft"
+                [attr.y1]="centerY"
+                [attr.x2]="svgWidth - plotPaddingRight"
+                [attr.y2]="centerY"
+                stroke="#bbbbbb"
+                stroke-width="1"
+                stroke-dasharray="4 4"
+              ></line>
+
+              <!-- X-axis main line -->
+              <line
+                [attr.x1]="plotPaddingLeft"
+                [attr.y1]="svgHeight - plotPaddingBottom"
+                [attr.x2]="svgWidth - plotPaddingRight"
+                [attr.y2]="svgHeight - plotPaddingBottom"
+                stroke="#333"
+                stroke-width="1"
+              ></line>
+
+              <!-- Y-axis main line -->
+              <line
+                [attr.x1]="plotPaddingLeft"
+                [attr.y1]="plotPaddingTop"
+                [attr.x2]="plotPaddingLeft"
+                [attr.y2]="svgHeight - plotPaddingBottom"
+                stroke="#333"
+                stroke-width="1"
+              ></line>
+
+              <!-- X-axis ticks & labels (min, mid, max) -->
+              <ng-container *ngIf="xLabels.length === 3">
+                <g *ngFor="let lbl of xLabels; let idx = index">
+                  <ng-container
+                    *ngIf="idx === 0 || idx === 1 || idx === 2"
+                  >
+                    <line
+                      [attr.x1]="
+                        idx === 0
+                          ? plotPaddingLeft
+                          : idx === 1
+                          ? centerX
+                          : svgWidth - plotPaddingRight
+                      "
+                      [attr.y1]="svgHeight - plotPaddingBottom"
+                      [attr.x2]="
+                        idx === 0
+                          ? plotPaddingLeft
+                          : idx === 1
+                          ? centerX
+                          : svgWidth - plotPaddingRight
+                      "
+                      [attr.y2]="svgHeight - plotPaddingBottom + 4"
+                      stroke="#333"
+                      stroke-width="1"
+                    ></line>
+                    <text
+                      [attr.x]="
+                        idx === 0
+                          ? plotPaddingLeft
+                          : idx === 1
+                          ? centerX
+                          : svgWidth - plotPaddingRight
+                      "
+                      [attr.y]="svgHeight - plotPaddingBottom + 16"
+                      text-anchor="middle"
+                      class="small"
+                    >
+                      {{ lbl }}
+                    </text>
+                  </ng-container>
+                </g>
+              </ng-container>
+
+              <!-- Y-axis ticks & labels (min, mid, max) -->
+              <ng-container *ngIf="yLabels.length === 3">
+                <g *ngFor="let lbl of yLabels; let idx = index">
+                  <ng-container
+                    *ngIf="idx === 0 || idx === 1 || idx === 2"
+                  >
+                    <line
+                      [attr.x1]="plotPaddingLeft"
+                      [attr.y1]="
+                        idx === 2
+                          ? plotPaddingTop
+                          : idx === 1
+                          ? centerY
+                          : svgHeight - plotPaddingBottom
+                      "
+                      [attr.x2]="plotPaddingLeft - 4"
+                      [attr.y2]="
+                        idx === 2
+                          ? plotPaddingTop
+                          : idx === 1
+                          ? centerY
+                          : svgHeight - plotPaddingBottom
+                      "
+                      stroke="#333"
+                      stroke-width="1"
+                    ></line>
+                    <text
+                      [attr.x]="plotPaddingLeft - 6"
+                      [attr.y]="
+                        idx === 2
+                          ? plotPaddingTop + 4
+                          : idx === 1
+                          ? centerY + 4
+                          : svgHeight - plotPaddingBottom + 4
+                      "
+                      text-anchor="end"
+                      class="small"
+                    >
+                      {{ lbl }}
+                    </text>
+                  </ng-container>
+                </g>
+              </ng-container>
+
+              <!-- Scatter points -->
+              <g>
+                <circle
+                  *ngFor="let p of scatterPoints"
+                  [attr.cx]="p.x"
+                  [attr.cy]="p.y"
+                  r="3"
+                  fill="#0d6efd"
+                  fill-opacity="0.7"
+                >
+                  <title>
+                    {{ p.date }} | Weather: {{ p.weatherMetric }} | Qty: {{
+                    p.quantity
+                    }}
+                  </title>
+                </circle>
+              </g>
+            </svg>
+
+            <div class="small text-muted mt-2">
+              Dotted lines split the plot into four quadrants. Top-right =
+              higher weather values &amp; higher sales.
+            </div>
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+</div>

@@ -1,0 +1,757 @@
+ProductID,ChannelID,LocationID,Method,Period,StartDate,EndDate,Type,Qty,Level 
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,13.982413,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.461374,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.594469,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.067238,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.73738,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.287626,111
+AztecWrap,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.603586,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.516163,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.613966,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.722956,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.21449,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.895499,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.150728,111
+AztecWrap,Pickup,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.554125,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.865244,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.68748,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,13.972729,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.256964,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.599199,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.101763,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.372917,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,16.49766,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,18.788492,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,15.935828,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,21.797403,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.56833,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.780582,111
+AztecWrap,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,16.085594,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,15.249704,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,17.40818,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,16.305758,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,15.510068,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.90485,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.214958,111
+AztecWrap,Pickup,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,15.857841,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,18.442667,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,16.978897,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,16.249744,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,17.926754,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,20.097887,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,21.968592,111
+AztecWrap,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,16.969439,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.331416,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.084448,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.808647,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.974546,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.499098,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.499098,111
+AztecWrap,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.499098,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.616282,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.34902,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.582193,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.489155,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.28638,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.513565,111
+AztecWrap,Pickup,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.279418,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.215263,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.755192,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.799258,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.14294,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,19.309288,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.571749,111
+AztecWrap,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.31087,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.087639,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.013762,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.160821,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.375834,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.119583,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.321249,111
+AztecWrap,OwnWebsite,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.949707,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.504671,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.560368,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.853874,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.158384,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.989382,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.059494,111
+AztecWrap,Pickup,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,13.450311,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.864452,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.01184,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.407133,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.281977,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.383982,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.85065,111
+AztecWrap,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.984886,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.509233,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.050432,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.341137,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.320158,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,14.395079,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.544448,111
+AztecWrap,OwnWebsite,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.413183,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.8056965,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.863753,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,19.340906,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,13.755874,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,20.606068,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.033966,111
+AztecWrap,Pickup,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.574182,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.0508,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.852119,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.455963,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.22154,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.441135,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.011887,111
+AztecWrap,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,19.28247,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.872152,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.068045,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.321669,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.874315,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.870115,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.929163,111
+AztecWrap,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.378107,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.243654,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.603655,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.109394,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.89415,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.89415,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.89415,111
+AztecWrap,Pickup,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.89415,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.082376,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.747071,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.796904,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.6679735,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.36319,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.801208,111
+AztecWrap,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.880852,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.898877,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.515896,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.172927,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.599941,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.100607,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,14.473197,111
+PizzaRoma,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.679115,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.090948,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.195438,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,14.173047,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,13.948005,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.774925,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.952789,111
+PizzaRoma,Pickup,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.549501,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.116762,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.638014,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,21.660337,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.142491,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.911913,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.12454,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.148188,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,16.104359,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,17.652822,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,18.909,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,19.284336,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,15.425358,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,19.791077,111
+PizzaRoma,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,16.48242,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,14.8344,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,16.988478,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,14.85155,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,16.319386,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.56478,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.930485,111
+PizzaRoma,Pickup,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,16.527813,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,21.637774,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,18.16121,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,17.047472,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,13.974364,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,18.35764,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.861681,111
+PizzaRoma,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,14.715145,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.239391,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.810535,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.960005,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.440542,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.403408,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.869764,111
+PizzaRoma,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.646399,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.28617,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.843678,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.258827,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.357424,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.604462,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.545237,111
+PizzaRoma,Pickup,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.843884,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.81991,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.878621,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,18.668682,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.597406,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.44034,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.234564,111
+PizzaRoma,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.165597,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.266373,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.219786,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,18.015816,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.326109,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.984697,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.022379,111
+PizzaRoma,OwnWebsite,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.729614,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.577927,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.805914,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,14.10823,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.901045,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,20.203959,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.750998,111
+PizzaRoma,Pickup,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.521305,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,21.943985,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,14.675928,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.324041,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.256056,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.097528,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.039766,111
+PizzaRoma,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.172384,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,20.762085,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.246477,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,19.033285,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.890408,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.898043,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.619087,111
+PizzaRoma,OwnWebsite,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,19.420908,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.93338,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.719515,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.85148,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.88826,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.835985,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.011555,111
+PizzaRoma,Pickup,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.434769,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.34421,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.191967,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.701924,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.698517,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.349518,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.960163,111
+PizzaRoma,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.94393,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.17892,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.064354,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.823322,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.567593,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.610823,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.708279,111
+PizzaRoma,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.345936,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.602777,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.921358,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,13.713161,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.543415,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.869402,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.483705,111
+PizzaRoma,Pickup,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.051956,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.734247,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.742882,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.612946,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.486736,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.732697,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.092842,111
+PizzaRoma,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.67037,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.546492,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.584391,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.57946,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,14.582486,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.238434,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,14.454326,111
+VeganChilly,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.742699,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.008074,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.158997,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.519073,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.147383,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.795597,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.029942,111
+VeganChilly,Pickup,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.548855,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.408764,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.640549,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.74929,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.703873,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.384254,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.606548,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.02835,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,14.265822,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,17.29125,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,18.727545,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,15.593917,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,17.53309,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,16.846115,111
+VeganChilly,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,15.440378,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,17.740591,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,15.417624,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,15.745593,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,16.976334,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.02406,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.246593,111
+VeganChilly,Pickup,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,19.309822,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,20.077501,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,27.102587,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,14.857388,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,16.452906,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.517979,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.252375,111
+VeganChilly,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,17.88365,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,24.37194,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,27.117468,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,29.920937,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,24.033228,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,29.12159,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,25.108698,111
+VeganChilly,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,27.665745,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.369239,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,20.349308,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,13.687317,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.2018585,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.81291,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.712458,111
+VeganChilly,Pickup,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.704471,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.405902,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.693665,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.236353,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.961921,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.263569,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.300146,111
+VeganChilly,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.651423,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.080431,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.76735,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,19.882664,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.53674,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.302635,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,19.445742,111
+VeganChilly,OwnWebsite,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.82904,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.849323,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.21355,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.53443,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.516838,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.776056,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.700718,111
+VeganChilly,Pickup,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.048132,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.099459,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.578066,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.394602,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.584238,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,19.218294,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.692726,111
+VeganChilly,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.928524,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.456036,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.760477,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.569448,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.506754,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.1492,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.1492,111
+VeganChilly,OwnWebsite,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.1492,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.219685,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.333275,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.954496,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.497648,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.248957,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.497648,111
+VeganChilly,Pickup,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.248957,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,12.400699,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,23.99378,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,12.828744,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,26.150137,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,29.197294,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,25.475739,111
+VeganChilly,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,19.933838,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.893003,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.967474,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.088755,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.369215,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.644674,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.577723,111
+VeganChilly,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.02034,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.183413,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.034307,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.821089,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.343575,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.474754,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.928745,111
+VeganChilly,Pickup,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.182564,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.632256,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.89995,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.17716,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.23067,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.016888,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.67462,111
+VeganChilly,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,19.172647,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.93442,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,14.773629,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,13.80421,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.737276,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.325955,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,19.444128,111
+VeggieBurger,OwnWebsite,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.873808,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.93299,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.684647,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.640789,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.975689,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.780869,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.330547,111
+VeggieBurger,Pickup,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,20.251614,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,17.66872,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.53028,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.37617,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.66332,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.736067,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.252678,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.245441,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,14.218679,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,15.446188,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,17.831242,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,18.902618,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,16.29571,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.512205,111
+VeggieBurger,OwnWebsite,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,18.032091,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,17.810928,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,14.545356,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,16.19583,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,16.810507,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,17.106283,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.930775,111
+VeggieBurger,Pickup,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,16.063963,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,24/02/2025,24/02/2025,1,16.606976,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,25/02/2025,25/02/2025,1,15.084764,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,26/02/2025,26/02/2025,1,16.54647,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,27/02/2025,27/02/2025,1,17.518435,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,28/02/2025,28/02/2025,1,15.292786,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,1/3/25,1/3/25,1,17.24142,111
+VeggieBurger,Thuisbezorgd,StoreAmsterdamZuid,XGBoost,Daily,2/3/25,2/3/25,1,15.476312,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,20.70041,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.666997,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,14.617425,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.129164,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,18.127216,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.924501,111
+VeggieBurger,OwnWebsite,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.629077,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,14.89562,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,14.951043,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,19.649446,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,18.121729,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.061392,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.972197,111
+VeggieBurger,Pickup,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.215416,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.843564,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,17.507187,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,14.838396,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.844286,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.735447,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,1/3/25,1/3/25,1,18.933565,111
+VeggieBurger,Thuisbezorgd,StoreArnhemCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.103487,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.120288,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,20.027042,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.850083,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.712816,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.441916,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,19.203766,111
+VeggieBurger,OwnWebsite,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,20.040682,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.079096,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,14.589952,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,16.560036,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.177736,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.722157,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,15.852472,111
+VeggieBurger,Pickup,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.94099,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,29.408192,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,21.733908,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,21.081373,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,19.923906,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.069529,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.510794,111
+VeggieBurger,Thuisbezorgd,StoreEdeCenter,XGBoost,Daily,2/3/25,2/3/25,1,19.03679,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.088623,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.639511,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,21.534897,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.157092,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.672201,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.773125,111
+VeggieBurger,OwnWebsite,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,15.562733,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,18.056906,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.910173,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.236541,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.053892,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,17.13478,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.804205,111
+VeggieBurger,Pickup,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.930498,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.765266,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,15.087003,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.557589,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,16.05683,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.438255,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.709213,111
+VeggieBurger,Thuisbezorgd,StoreElstCenter,XGBoost,Daily,2/3/25,2/3/25,1,18.915165,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,16.472557,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,18.200754,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,18.550285,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,17.458523,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,16.966208,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,17.098831,111
+VeggieBurger,OwnWebsite,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,16.33335,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,19.668383,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.75291,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,15.79858,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,15.223489,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,19.45947,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.6668,111
+VeggieBurger,Pickup,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.322594,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,24/02/2025,24/02/2025,1,15.4342375,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,25/02/2025,25/02/2025,1,16.904047,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,26/02/2025,26/02/2025,1,17.450787,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,27/02/2025,27/02/2025,1,19.589602,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,28/02/2025,28/02/2025,1,15.963762,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,1/3/25,1/3/25,1,16.04338,111
+VeggieBurger,Thuisbezorgd,StoreNijmegenCenter,XGBoost,Daily,2/3/25,2/3/25,1,17.114155,111
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,66.5108,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,62.76749,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,62.403202,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,64.20415,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,66.95129,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,75.359024,112
+AztecWrap,OwnWebsite,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,72.88873,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,64.11282,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,62.999775,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,60.731323,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,64.47093,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,72.88773,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,63.87091,112
+AztecWrap,Pickup,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,67.05708,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,63.344803,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,64.9803,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,62.252785,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,76.63189,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,77.59393,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,72.50838,112
+AztecWrap,Thuisbezorgd,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,64.71347,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,33.88687,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,32.220356,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,32.321896,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,33.699196,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,33.739605,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,30.5094,112
+AztecWrap,OwnWebsite,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,33.24359,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,28.980421,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,31.962427,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,37.136986,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,36.898926,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,34.98291,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,31.998915,112
+AztecWrap,Pickup,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,35.31042,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,33.35556,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,33.80567,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,36.20294,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,33.04567,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,30.875656,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,32.390354,112
+AztecWrap,Thuisbezorgd,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,34.24135,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,73.93906,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,65.5145,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,61.57489,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,65.590645,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,64.79078,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,69.93832,112
+PizzaRoma,OwnWebsite,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,74.16611,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,68.124794,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,69.10884,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,63.269875,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,69.13228,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,66.01142,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,67.438194,112
+PizzaRoma,Pickup,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,64.14435,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,64.17979,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,67.009766,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,67.643326,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,69.23299,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,67.95701,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,70.27057,112
+PizzaRoma,Thuisbezorgd,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,67.30382,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,30.87219,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,34.21432,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,31.36628,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,30.037016,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,34.391727,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,31.961958,112
+PizzaRoma,OwnWebsite,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,30.037016,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,31.133429,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,31.79404,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,33.788414,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,31.131548,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,32.91976,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,32.640907,112
+PizzaRoma,Pickup,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,33.089684,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,31.7979,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,33.8221,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,29.968246,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,34.185707,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,33.07709,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,34.235737,112
+PizzaRoma,Thuisbezorgd,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,31.56891,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,74.44495,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,68.46852,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,63.28899,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,63.55153,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,62.032005,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,68.53287,112
+VeganChilly,OwnWebsite,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,71.66455,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,69.91107,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,63.529617,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,64.798325,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,70.96633,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,76.22046,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,65.53192,112
+VeganChilly,Pickup,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,65.757385,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,74.1131,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,67.91797,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,61.2223,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,62.718353,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,66.60893,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,69.311035,112
+VeganChilly,Thuisbezorgd,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,67.53537,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,35.33743,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,32.54623,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,34.9226,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,36.39577,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,35.918217,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,31.396067,112
+VeganChilly,OwnWebsite,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,31.533123,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,36.776707,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,37.167553,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,30.728666,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,32.594097,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,32.080357,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,30.599281,112
+VeganChilly,Pickup,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,35.41378,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,32.942963,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,33.35196,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,32.832478,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,36.55402,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,35.327404,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,35.156467,112
+VeganChilly,Thuisbezorgd,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,28.451319,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,65.18543,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,62.738235,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,64.82989,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,63.981106,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,65.234436,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,80.32088,112
+VeggieBurger,OwnWebsite,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,99.542404,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,67.819084,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,61.402294,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,64.61524,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,68.772835,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,64.46835,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,69.604744,112
+VeggieBurger,Pickup,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,74.35905,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,24/02/2025,24/02/2025,1,66.222374,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,25/02/2025,25/02/2025,1,64.97091,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,26/02/2025,26/02/2025,1,66.86845,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,27/02/2025,27/02/2025,1,63.907074,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,28/02/2025,28/02/2025,1,67.18007,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,1/3/25,1/3/25,1,67.0398,112
+VeggieBurger,Thuisbezorgd,Gelderland,XGBoost,Daily,2/3/25,2/3/25,1,74.58561,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,38.93235,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,33.102066,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,36.19155,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,33.01066,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,31.182554,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,33.02653,112
+VeggieBurger,OwnWebsite,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,34.882786,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,33.23191,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,30.828056,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,30.862518,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,36.321274,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,33.898632,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,34.196022,112
+VeggieBurger,Pickup,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,32.211353,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,24/02/2025,24/02/2025,1,34.988434,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,25/02/2025,25/02/2025,1,30.936674,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,26/02/2025,26/02/2025,1,33.149063,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,27/02/2025,27/02/2025,1,31.255133,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,28/02/2025,28/02/2025,1,34.390285,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,1/3/25,1/3/25,1,34.81703,112
+VeggieBurger,Thuisbezorgd,North Holland,XGBoost,Daily,2/3/25,2/3/25,1,33.91446,112
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,101.96154,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,107.10351,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,97.68751,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,95.87799,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,96.84463,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,104.30973,113
+AztecWrap,OwnWebsite,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,109.15254,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,93.49552,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,96.90491,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,101.11147,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,108.457436,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,102.943054,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,100.17897,113
+AztecWrap,Pickup,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,96.55703,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,95.906906,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,104.94246,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,102.43481,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,103.055275,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,95.99365,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,91.06669,113
+AztecWrap,Thuisbezorgd,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,110.826675,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,135.2512,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,97.80903,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,99.56245,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,97.185936,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,103.023926,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,98.01499,113
+PizzaRoma,OwnWebsite,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,110.9673,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,99.83826,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,101.181305,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,100.8735,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,106.55461,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,94.955444,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,94.64682,113
+PizzaRoma,Pickup,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,96.80597,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,93.77344,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,154.03677,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,143.52945,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,153.19547,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,164.89095,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,169.44136,113
+PizzaRoma,Thuisbezorgd,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,163.18454,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,110.29389,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,97.63278,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,92.41384,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,97.82198,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,97.34772,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,108.52643,113
+VeganChilly,OwnWebsite,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,103.28238,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,99.48587,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,97.128746,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,98.2548,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,98.44533,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,101.913055,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,101.80983,113
+VeganChilly,Pickup,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,100.75248,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,96.94076,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,98.14915,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,98.988365,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,101.92824,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,126.917625,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,162.68141,113
+VeganChilly,Thuisbezorgd,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,138.04628,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,96.03395,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,102.11286,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,106.99891,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,105.1317,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,104.6881,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,98.312996,113
+VeggieBurger,OwnWebsite,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,99.94238,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,100.741714,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,95.8296,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,91.3103,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,102.24097,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,104.604965,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,109.839935,113
+VeggieBurger,Pickup,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,104.875114,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,24/02/2025,24/02/2025,1,100.0575,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,25/02/2025,25/02/2025,1,108.855515,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,26/02/2025,26/02/2025,1,96.34361,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,27/02/2025,27/02/2025,1,103.14882,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,28/02/2025,28/02/2025,1,98.705795,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,1/3/25,1/3/25,1,119.02417,113
+VeggieBurger,Thuisbezorgd,Netherlands,XGBoost,Daily,2/3/25,2/3/25,1,88.55713,113

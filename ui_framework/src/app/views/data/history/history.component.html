@@ -1,0 +1,173 @@
+<!-- Saved Search (optional) -->
+<c-row class="mb-3">
+  <c-col sm="8">
+    <label>Saved Search</label>
+    <select class="form-select" [formControl]="selectedSavedIndex">
+      <option [ngValue]="-1">-- Choose a saved search --</option>
+      <option *ngFor="let s of savedSearches; let i = index" [ngValue]="i">
+        {{ s.name }} — {{ s.query }}
+      </option>
+    </select>
+    <small class="text-muted">Optional: loads text into the search box.</small>
+  </c-col>
+
+  <c-col sm="4" class="d-flex align-items-end">
+    <button class="btn btn-outline-primary w-100"
+            (click)="useSavedQuery()"
+            [disabled]="loading || (selectedSavedIndex.value ?? -1) === -1">
+      Use Saved
+    </button>
+  </c-col>
+</c-row>
+
+<!-- Status -->
+<c-row *ngIf="errorMessage" class="mb-2">
+  <c-col><div class="alert alert-danger mb-0">{{ errorMessage }}</div></c-col>
+</c-row>
+
+<c-row *ngIf="loading" class="mb-2">
+  <c-col><div class="alert alert-info mb-0">Loading…</div></c-col>
+</c-row>
+
+<!-- Controls -->
+<c-row class="mb-4">
+  <c-col sm="2">
+    <label>Period</label>
+    <select class="form-select" [formControl]="period">
+      <option value="Daily">Daily</option>
+      <option value="Weekly">Weekly</option>
+      <option value="Monthly">Monthly</option>
+    </select>
+  </c-col>
+
+  <c-col sm="2">
+    <label>Level (optional)</label>
+    <input class="form-control" [formControl]="level" placeholder="e.g. 111" />
+  </c-col>
+
+  <c-col sm="2">
+    <label>Search by</label>
+    <select class="form-select" [formControl]="searchField">
+      <option value="ProductID">ProductID</option>
+      <option value="ChannelID">ChannelID</option>
+      <option value="LocationID">LocationID</option>
+    </select>
+  </c-col>
+
+  <!-- ✅ NEW: Type filter (Both/Normal/Cleansed) -->
+  <c-col sm="2">
+    <label>Show</label>
+    <select class="form-select" [formControl]="typeFilter">
+      <option value="Both">Both</option>
+      <option value="Normal-History">Normal-History</option>
+      <option value="Cleansed-History">Cleansed-History</option>
+    </select>
+  </c-col>
+
+  <c-col sm="3">
+    <label>Type to search</label>
+    <input
+      class="form-control"
+      [formControl]="searchTerm"
+      placeholder="Type 1001 / AH / NL..."
+      (input)="startTypedMode()" />
+    <small class="text-muted">No query language needed.</small>
+  </c-col>
+
+  <c-col sm="1" class="d-flex align-items-end">
+    <button class="btn btn-outline-secondary w-100" (click)="clearAll()" [disabled]="loading">
+      Clear
+    </button>
+  </c-col>
+
+  <c-col sm="1" class="d-flex align-items-end">
+    <button class="btn btn-outline-primary w-100" (click)="exportToCSV()" [disabled]="!rows.length">
+      Export
+    </button>
+  </c-col>
+</c-row>
+
+
+
+<!-- Table -->
+<c-row *ngIf="!loading && rows.length > 0">
+  <c-col>
+    <c-card>
+      <c-card-header>
+        History ({{ totalRows }} rows) — page {{ currentPage }} / {{ totalPages }}
+      </c-card-header>
+
+      <c-card-body>
+        <table cTable striped responsive hover class="table mb-0 border">
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>ProductID</th>
+              <th>ChannelID</th>
+              <th>LocationID</th>
+              <th>StartDate</th>
+              <th>EndDate</th>
+              <th>Period</th>
+              <th>Qty</th>
+              <th>NetPrice</th>
+              <th>ListPrice</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (r of rows; track r.StartDate + '_' + r.ProductID + '_' + r.ChannelID + '_' + r.LocationID) {
+              <tr>
+                <td>{{ r.Level }}</td>
+                <td>{{ r.ProductID }}</td>
+                <td>{{ r.ChannelID }}</td>
+                <td>{{ r.LocationID }}</td>
+                <td>{{ r.StartDate }}</td>
+                <td>{{ r.EndDate }}</td>
+                <td>{{ r.Period }}</td>
+                <td>{{ r.Qty }}</td>
+                <td>{{ r.NetPrice }}</td>
+                <td>{{ r.ListPrice }}</td>
+                <td>{{ r.Type }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </c-card-body>
+
+      <!-- Pagination -->
+      <c-card-footer class="d-flex justify-content-center" *ngIf="totalPages > 1">
+        <nav>
+          <ul class="pagination mb-0">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <a class="page-link" (click)="setPage(1)">« First</a>
+            </li>
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <a class="page-link" (click)="setPage(currentPage - 1)">‹ Prev</a>
+            </li>
+
+            <li class="page-item" *ngFor="let p of visiblePages()" [class.active]="p === currentPage">
+              <a class="page-link" (click)="setPage(p)">{{ p }}</a>
+            </li>
+
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <a class="page-link" (click)="setPage(currentPage + 1)">Next ›</a>
+            </li>
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <a class="page-link" (click)="setPage(totalPages)">Last »</a>
+            </li>
+          </ul>
+        </nav>
+      </c-card-footer>
+    </c-card>
+  </c-col>
+</c-row>
+
+<!-- Empty state -->
+<c-row *ngIf="!loading && rows.length === 0">
+  <c-col>
+    <p class="text-muted text-center mt-4">
+      Type a ProductID / ChannelID / LocationID to load history.
+    </p>
+  </c-col>
+</c-row>

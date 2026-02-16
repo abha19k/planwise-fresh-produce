@@ -1,0 +1,262 @@
+<!-- src/app/views/data/kpi/kpi-dashboard.component.html -->
+
+<div class="container-fluid" style="padding: 16px;">
+  <h2 class="mb-2 fw-bold">KPI Dashboard</h2>
+  <div class="text-muted mb-3">
+    Compare KPIs by <span class="fw-semibold">{{ dimension }}</span>, Lag and Period
+  </div>
+
+  <!-- Top controls -->
+  <div class="d-flex flex-wrap gap-3 mb-3">
+    <!-- Dimension -->
+    <div>
+      <label class="form-label mb-1">Compare by</label>
+      <select class="form-select"
+              [(ngModel)]="dimension"
+              (ngModelChange)="onDimensionChange($event)">
+        <option *ngFor="let d of dimensions" [ngValue]="d">{{ d }}</option>
+      </select>
+    </div>
+
+    <!-- Period -->
+    <div>
+      <label class="form-label mb-1">Period</label>
+      <select class="form-select"
+              [(ngModel)]="selectedPeriod"
+              (ngModelChange)="onPeriodChange($event)">
+        <option *ngFor="let p of periods" [ngValue]="p">{{ p }}</option>
+      </select>
+    </div>
+
+    <!-- Lag config -->
+    <div>
+      <label class="form-label mb-1">Lag configuration</label>
+      <select class="form-select"
+              [(ngModel)]="selectedLag"
+              (ngModelChange)="onLagChange($event)">
+        <option *ngFor="let l of lagConfigs" [ngValue]="l">{{ l }}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="mb-2 text-muted">
+    Bars = {{ dimension }}s
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="loading" class="text-muted mb-3">Loading KPI data…</div>
+  <div *ngIf="errorMessage" class="text-danger mb-3">{{ errorMessage }}</div>
+
+  <!-- Metric cards grid -->
+  <div class="row g-3">
+
+    <!-- ========================= -->
+    <!-- Forecast Accuracy Panel -->
+    <!-- ========================= -->
+    <div class="col-12 col-xl-6">
+      <c-card class="h-100">
+        <c-card-header class="fw-semibold">Forecast accuracy in %</c-card-header>
+        <c-card-body>
+
+          <div style="display:flex; height:260px; padding:8px 4px 4px 4px;">
+
+            <!-- Dynamic Y-axis -->
+            <div
+              style="display:flex; flex-direction:column-reverse; justify-content:space-between;
+                     width:40px; font-size:11px; color:#555; margin-right:8px;
+                     border-left:1px solid #ccd; padding-left:4px;">
+              <div *ngFor="let t of accuracyTicks">
+                {{ t | number:'1.0-0' }}%
+              </div>
+            </div>
+
+            <!-- Bars area -->
+            <div
+              style="flex:1; display:flex; align-items:flex-end; gap:20px; overflow-x:auto;
+                     border-bottom:1px solid #ccd; padding-bottom:8px;">
+
+              <div *ngFor="let b of accuracyBars"
+                   style="display:flex; flex-direction:column; align-items:center; min-width:80px;">
+
+                <!-- value above bar -->
+                <div style="font-size:11px; margin-bottom:4px;">
+                  {{ b.value | number:'1.0-1' }}%
+                </div>
+
+                <!-- bar -->
+                <div
+                  style="width:45px; border-radius:6px 6px 0 0; background:#003566;"
+                  [style.height.px]="b.heightPx">
+                </div>
+
+                <!-- label below bar -->
+                <div style="font-size:11px; text-align:center; margin-top:6px; white-space:normal;">
+                  {{ b.label }}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </c-card-body>
+      </c-card>
+    </div>
+
+    <!-- ========================= -->
+    <!-- MAPE Panel -->
+    <!-- ========================= -->
+    <div class="col-12 col-xl-6">
+      <c-card class="h-100">
+        <c-card-header class="fw-semibold">MAPE %</c-card-header>
+        <c-card-body>
+
+          <div style="display:flex; height:260px; padding:8px 4px 4px 4px;">
+
+            <!-- Dynamic Y-axis -->
+            <div
+              style="display:flex; flex-direction:column-reverse; justify-content:space-between;
+                     width:40px; font-size:11px; color:#555; margin-right:8px;
+                     border-left:1px solid #ccd; padding-left:4px;">
+              <div *ngFor="let t of mapeTicks">
+                {{ t | number:'1.0-0' }}%
+              </div>
+            </div>
+
+            <!-- Bars -->
+            <div
+              style="flex:1; display:flex; align-items:flex-end; gap:20px; overflow-x:auto;
+                     border-bottom:1px solid #ccd; padding-bottom:8px;">
+
+              <div *ngFor="let b of mapeBars"
+                   style="display:flex; flex-direction:column; align-items:center; min-width:80px;">
+
+                <!-- value -->
+                <div style="font-size:11px; margin-bottom:4px;">
+                  {{ b.value | number:'1.0-1' }}%
+                </div>
+
+                <!-- bar -->
+                <div
+                  style="width:45px; border-radius:6px 6px 0 0; background:#003566;"
+                  [style.height.px]="b.heightPx">
+                </div>
+
+                <!-- label -->
+                <div style="font-size:11px; text-align:center; margin-top:6px; white-space:normal;">
+                  {{ b.label }}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </c-card-body>
+      </c-card>
+    </div>
+
+    <!-- ========================= -->
+    <!-- RMSE Panel -->
+    <!-- ========================= -->
+    <div class="col-12 col-xl-6">
+      <c-card class="h-100">
+        <c-card-header class="fw-semibold">RMSE</c-card-header>
+        <c-card-body>
+
+          <div style="display:flex; height:260px; padding:8px 4px 4px 4px;">
+
+            <!-- Dynamic Y-axis -->
+            <div
+              style="display:flex; flex-direction:column-reverse; justify-content:space-between;
+                     width:40px; font-size:11px; color:#555; margin-right:8px;
+                     border-left:1px solid #ccd; padding-left:4px;">
+              <div *ngFor="let t of rmseTicks">
+                {{ t | number:'1.0-0' }}
+              </div>
+            </div>
+
+            <!-- Bars -->
+            <div
+              style="flex:1; display:flex; align-items:flex-end; gap:20px; overflow-x:auto;
+                     border-bottom:1px solid #ccd; padding-bottom:8px;">
+
+              <div *ngFor="let b of rmseBars"
+                   style="display:flex; flex-direction:column; align-items:center; min-width:80px;">
+
+                <!-- value -->
+                <div style="font-size:11px; margin-bottom:4px;">
+                  {{ b.value | number:'1.0-0' }}
+                </div>
+
+                <!-- bar -->
+                <div
+                  style="width:45px; border-radius:6px 6px 0 0; background:#003566;"
+                  [style.height.px]="b.heightPx">
+                </div>
+
+                <!-- label -->
+                <div style="font-size:11px; text-align:center; margin-top:6px; white-space:normal;">
+                  {{ b.label }}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </c-card-body>
+      </c-card>
+    </div>
+
+    <!-- ========================= -->
+    <!-- Bias Panel -->
+    <!-- ========================= -->
+    <div class="col-12 col-xl-6">
+      <c-card class="h-100">
+        <c-card-header class="fw-semibold">Bias</c-card-header>
+        <c-card-body>
+
+          <div style="display:flex; height:260px; padding:8px 4px 4px 4px;">
+
+            <!-- Dynamic Y-axis -->
+            <div
+              style="display:flex; flex-direction:column-reverse; justify-content:space-between;
+                     width:40px; font-size:11px; color:#555; margin-right:8px;
+                     border-left:1px solid #ccd; padding-left:4px;">
+              <div *ngFor="let t of biasTicks">
+                {{ t | number:'1.0-0' }}
+              </div>
+            </div>
+
+            <!-- Bars -->
+            <div
+              style="flex:1; display:flex; align-items:flex-end; gap:20px; overflow-x:auto;
+                     border-bottom:1px solid #ccd; padding-bottom:8px;">
+
+              <div *ngFor="let b of biasBars"
+                   style="display:flex; flex-direction:column; align-items:center; min-width:80px;">
+
+                <!-- value -->
+                <div style="font-size:11px; margin-bottom:4px;">
+                  {{ b.value | number:'1.0-1' }}
+                </div>
+
+                <!-- bar -->
+                <div
+                  style="width:45px; border-radius:6px 6px 0 0; background:#003566;"
+                  [style.height.px]="b.heightPx">
+                </div>
+
+                <!-- label -->
+                <div style="font-size:11px; text-align:center; margin-top:6px; white-space:normal;">
+                  {{ b.label }}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </c-card-body>
+      </c-card>
+    </div>
+
+  </div>
+</div>

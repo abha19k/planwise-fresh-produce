@@ -1,0 +1,95 @@
+<!-- Saved search & Run -->
+<c-card class="mb-3">
+  <c-card-header>Classify Forecast Unit and Select Model</c-card-header>
+  <c-card-body>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-6">
+        <label class="form-label">Saved Search</label>
+        <select class="form-select" [formControl]="selectedSavedIndex">
+          <option [ngValue]="-1">-- Choose a saved search --</option>
+          <option *ngFor="let s of savedSearches; let i = index" [ngValue]="i">
+            {{ s.name }} — {{ s.query }}
+          </option>
+        </select>
+      </div>
+
+      <div class="col-sm-3">
+        <label class="form-label">Period</label>
+        <select class="form-select" [formControl]="periodSelection">
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+        </select>
+      </div>
+
+      <div class="col-sm-3">
+        <button
+          class="btn btn-primary w-100"
+          (click)="runClassification()"
+          [disabled]="loading || selectedSavedIndex.value === -1"
+        >
+          {{ loading ? 'Running…' : 'Run Classification' }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="errorMsg" class="alert alert-danger mt-3">{{ errorMsg }}</div>
+  </c-card-body>
+</c-card>
+
+<!-- Settings card (unchanged) ... -->
+
+<!-- Results + Save -->
+<c-card>
+  <c-card-header>Forecast Elements Classified (from Cleansed History)</c-card-header>
+  <c-card-body>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="text-muted">
+        {{ rows.length }} row(s) ready to save
+      </div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-success" (click)="saveResults()" [disabled]="saving || !rows.length">
+          {{ saving ? 'Saving…' : 'Save Results' }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="saveMsg" class="alert alert-success">{{ saveMsg }}</div>
+    <div *ngIf="saveErr" class="alert alert-danger">{{ saveErr }}</div>
+
+    <div *ngIf="!rows.length && !loading" class="text-muted">
+      Run a classification to see results.
+    </div>
+
+    <div class="table-responsive" *ngIf="rows.length">
+      <table cTable striped hover class="table mb-0 border">
+        <thead>
+          <tr>
+            <th>ProductID</th>
+            <th>ChannelID</th>
+            <th>LocationID</th>
+            <th class="text-end">ADI</th>
+            <th class="text-end">CV²</th>
+            <th>Category</th>
+            <th>Chosen Model</th>
+            <th>Created At</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let r of rows; trackBy: trackByKey">
+            <td>{{ r.ProductID }}</td>
+            <td>{{ r.ChannelID }}</td>
+            <td>{{ r.LocationID }}</td>
+            <td class="text-end">{{ r.adi === null ? '—' : (r.adi | number:'1.2-2') }}</td>
+            <td class="text-end">{{ r.cv2 === null ? '—' : (r.cv2 | number:'1.2-2') }}</td>
+            <td>{{ r.category }}</td>
+            <td><code>{{ chosenAlgo(r.category) }}</code></td>
+            <td>{{ r.createdAt ? (r.createdAt | date:'yyyy-MM-dd HH:mm') : '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </c-card-body>
+</c-card>

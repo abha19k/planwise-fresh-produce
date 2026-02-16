@@ -1,0 +1,155 @@
+<!-- 🔖 Saved Search + Run typed search -->
+<c-row class="mb-3">
+  <c-col sm="6">
+    <label>Saved Search</label>
+    <select class="form-select" [formControl]="selectedSavedIndex">
+      <option [ngValue]="-1">-- Choose a saved search --</option>
+      <option *ngFor="let s of savedSearches; let i = index" [ngValue]="i">
+        {{ s.name }} — {{ s.query }}
+      </option>
+    </select>
+  </c-col>
+
+  <c-col sm="3" class="d-flex align-items-end">
+    <button class="btn btn-primary w-100"
+            (click)="loadFromSaved()"
+            [disabled]="loading || (selectedSavedIndex.value ?? -1) === -1">
+      Load Saved
+    </button>
+  </c-col>
+
+  <c-col sm="3" class="d-flex align-items-end">
+    <button class="btn btn-outline-primary w-100"
+            (click)="runTypedSearch()"
+            [disabled]="loading">
+      Run Search
+    </button>
+  </c-col>
+</c-row>
+
+<!-- ⚠️ Status -->
+<c-row *ngIf="errorMessage" class="mb-2">
+  <c-col>
+    <div class="alert alert-danger mb-0">{{ errorMessage }}</div>
+  </c-col>
+</c-row>
+
+<c-row *ngIf="loading" class="mb-2">
+  <c-col>
+    <div class="alert alert-info mb-0">Loading…</div>
+  </c-col>
+</c-row>
+
+<!-- 🔍 Typed filters -->
+<c-row class="mb-4">
+  <c-col sm="2">
+    <label>ProductID</label>
+    <input type="text" class="form-control" [formControl]="productSearch" placeholder="e.g. 1001" />
+  </c-col>
+
+  <c-col sm="2">
+    <label>ChannelID</label>
+    <input type="text" class="form-control" [formControl]="channelSearch" placeholder="e.g. Online" />
+  </c-col>
+
+  <c-col sm="2">
+    <label>LocationID</label>
+    <input type="text" class="form-control" [formControl]="locationSearch" placeholder="e.g. NL-ZH" />
+  </c-col>
+
+  <c-col sm="2">
+    <label>Level</label>
+    <input type="text" class="form-control" [formControl]="levelSearch" placeholder="e.g. 311" />
+  </c-col>
+
+  <c-col sm="2">
+    <label>IsActive</label>
+    <input type="text" class="form-control" [formControl]="isActiveSearch" placeholder="true / false" />
+  </c-col>
+
+  <c-col sm="2" class="d-flex align-items-end">
+    <button class="btn btn-outline-secondary me-2 w-50" (click)="clearAllFilters()">Clear</button>
+    <button class="btn btn-outline-success w-50" (click)="exportToCSV()" [disabled]="!filteredUnits.length">Export</button>
+  </c-col>
+</c-row>
+
+<!-- 📊 Results Table -->
+<c-row *ngIf="!loading && filteredUnits.length > 0">
+  <c-col>
+    <c-card>
+      <c-card-header>
+        Forecast Elements ({{ filteredUnits.length }})
+      </c-card-header>
+      <c-card-body>
+        <table cTable striped responsive hover class="table mb-0 border">
+          <thead>
+            <tr>
+              <th (click)="sortBy('ProductID')">ProductID</th>
+              <th (click)="sortBy('ChannelID')">ChannelID</th>
+              <th (click)="sortBy('LocationID')">LocationID</th>
+              <th (click)="sortBy('Level')">Level</th>
+              <th (click)="sortBy('IsActive')">IsActive</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of paginatedData; track item.ProductID + '_' + item.ChannelID + '_' + item.LocationID) {
+              <tr>
+                <td>{{ item.ProductID }}</td>
+                <td>{{ item.ChannelID }}</td>
+                <td>{{ item.LocationID }}</td>
+                <td>{{ item.Level }}</td>
+                <td>{{ item.IsActive }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </c-card-body>
+
+      <!-- Pagination -->
+      <c-card-footer class="d-flex justify-content-center" *ngIf="totalPages > 1">
+        <nav>
+          <ul class="pagination mb-0">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <a class="page-link" (click)="setPage(currentPage - 1)">Previous</a>
+            </li>
+
+            <li class="page-item" *ngIf="visiblePages()[0] > 1">
+              <a class="page-link" (click)="setPage(1)">1</a>
+            </li>
+            <li class="page-item disabled" *ngIf="visiblePages()[0] > 2">
+              <span class="page-link">…</span>
+            </li>
+
+            @for (page of visiblePages(); track page) {
+              <li class="page-item" [class.active]="page === currentPage">
+                <a class="page-link" (click)="setPage(page)">{{ page }}</a>
+              </li>
+            }
+
+            <li class="page-item disabled"
+                *ngIf="visiblePages()[visiblePages().length - 1] < (totalPages - 1)">
+              <span class="page-link">…</span>
+            </li>
+            <li class="page-item"
+                *ngIf="visiblePages()[visiblePages().length - 1] < totalPages">
+              <a class="page-link" (click)="setPage(totalPages)">{{ totalPages }}</a>
+            </li>
+
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <a class="page-link" (click)="setPage(currentPage + 1)">Next</a>
+            </li>
+          </ul>
+        </nav>
+      </c-card-footer>
+    </c-card>
+  </c-col>
+</c-row>
+
+<!-- 😶 No results -->
+<c-row *ngIf="!loading && filteredUnits.length === 0">
+  <c-col>
+    <p class="text-muted text-center mt-4">
+      Type a filter (ProductID / ChannelID / LocationID / Level / IsActive) to load forecast elements.
+    </p>
+  </c-col>
+</c-row>

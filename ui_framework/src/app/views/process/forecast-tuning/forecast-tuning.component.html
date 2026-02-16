@@ -1,0 +1,243 @@
+<c-card>
+  <!-- ====== TOP: Single-key selection & actions ====== -->
+  <c-card-header>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-2">
+        <label class="form-label">Period</label>
+        <select class="form-select" [formControl]="periodSelection">
+          <option>Daily</option><option>Weekly</option><option>Monthly</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">ProductID</label>
+        <select class="form-select" [formControl]="productIdCtrl">
+          <option value="">(Any)</option>
+          <option *ngFor="let v of productIds" [value]="v">{{ v }}</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">ChannelID</label>
+        <select class="form-select" [formControl]="channelIdCtrl">
+          <option value="">(Any)</option>
+          <option *ngFor="let v of channelIds" [value]="v">{{ v }}</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">LocationID</label>
+        <select class="form-select" [formControl]="locationIdCtrl">
+          <option value="">(Any)</option>
+          <option *ngFor="let v of locationIds" [value]="v">{{ v }}</option>
+        </select>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button cButton color="secondary" (click)="updatePlot()" [disabled]="loading">
+          Load History
+        </button>
+
+        <button cButton color="primary" (click)="runSingleKeyForecast(false)" [disabled]="loading">
+          Run Forecast
+        </button>
+
+        <button cButton color="primary" (click)="runSingleKeyForecast(true)" [disabled]="loading">
+          Save Forecast
+        </button>
+
+        <button cButton color="primary" (click)="runBacktest()" [disabled]="loading">
+          Backtest
+        </button>
+
+        <button cButton color="primary" (click)="tuneXgb()" [disabled]="loading">
+          Tune (grid)
+        </button>
+      </div>
+    </div>
+  </c-card-header>
+
+  <!-- ====== MIDDLE: Plot & metrics ====== -->
+  <c-card-body>
+    <div *ngIf="errorMessage" class="text-danger mb-2">{{ errorMessage }}</div>
+
+    <!-- Chart legend -->
+    <div class="d-flex flex-wrap align-items-center gap-4 small text-muted mb-2">
+      <span class="d-inline-flex align-items-center gap-2">
+        <span style="display:inline-block;width:28px;height:0;border-top:3px solid #2563eb;border-radius:2px;"></span>
+        History
+      </span>
+      <span class="d-inline-flex align-items-center gap-2">
+        <span style="display:inline-block;width:28px;height:0;border-top:3px solid #10b981;border-radius:2px;"></span>
+        Forecast
+      </span>
+      <span class="d-inline-flex align-items-center gap-2">
+        <span style="display:inline-block;width:28px;height:0;border-top:3px solid #f59e0b;border-radius:2px;"></span>
+        History (Query)
+      </span>
+      <span class="d-inline-flex align-items-center gap-2">
+        <span style="display:inline-block;width:28px;height:0;border-top:3px solid #a855f7;border-radius:2px;"></span>
+        Forecast (Query)
+      </span>
+    </div>
+
+    <div style="height: 420px;">
+      <canvas #chartCanvas></canvas>
+    </div>
+
+    <div *ngIf="metrics" class="mt-3">
+      <h6>Backtest metrics</h6>
+      <table cTable class="table-sm">
+        <thead>
+          <tr><th>MAE</th><th>RMSE</th><th>MAPE%</th><th>sMAPE%</th><th>WAPE%</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ metrics['MAE']  | number:'1.2-2' }}</td>
+            <td>{{ metrics['RMSE'] | number:'1.2-2' }}</td>
+            <td>{{ metrics['MAPE'] | number:'1.2-2' }}</td>
+            <td>{{ metrics['sMAPE']| number:'1.2-2' }}</td>
+            <td>{{ metrics['WAPE'] | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="tuneResult?.results?.length" class="mt-3">
+      <h6>Top configs (by WAPE)</h6>
+      <table cTable class="table-sm">
+        <thead>
+          <tr>
+            <th>Lag</th><th>WAPE%</th><th>sMAPE%</th><th>RMSE</th><th>Params</th><th>Features</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of tuneResult!.results">
+            <td>{{ r.lag }}</td>
+            <td>{{ r.WAPE | number:'1.1-1' }}</td>
+            <td>{{ r.sMAPE | number:'1.1-1' }}</td>
+            <td>{{ r.RMSE | number:'1.1-1' }}</td>
+            <td><code>{{ r.params | json }}</code></td>
+            <td><code>{{ r.features | json }}</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ====== BOTTOM: Saved searches & query mode ====== -->
+    <hr class="my-4" />
+
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-12 col-md-4">
+        <label class="form-label">Saved searches</label>
+        <select class="form-select" [formControl]="savedSearchId">
+          <option [ngValue]="null">— choose —</option>
+          <option *ngFor="let s of savedSearches" [ngValue]="s.id">{{ s.name }}</option>
+        </select>
+        <div class="form-text">Query: <code>{{ queryCtrl.value }}</code></div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">Save current as…</label>
+        <div class="d-flex gap-2">
+          <input class="form-control" type="text" placeholder="e.g. product_all"
+                 [formControl]="newSavedName" (keyup.enter)="saveCurrentAsSearch()">
+          <button cButton color="secondary" (click)="saveCurrentAsSearch()" [disabled]="loading">
+            Save search
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-4 d-flex gap-2">
+        <button cButton color="dark" class="flex-fill"
+                (click)="loadHistoryForQuery()" [disabled]="loading">
+          Load History (Query)
+        </button>
+        <button cButton color="primary" class="flex-fill"
+                (click)="runForecastForQuery(false)" [disabled]="loading">
+          Run Forecast (Query)
+        </button>
+        <button cButton color="success" class="flex-fill"
+                (click)="runForecastForQuery(true)" [disabled]="loading">
+          Save Forecast (Query)
+        </button>
+      </div>
+    </div>
+
+    <!-- Tuning quick params -->
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label">Lag</label>
+        <input type="number" class="form-control" [formControl]="lagCtrl" min="1">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Horizon</label>
+        <input type="number" class="form-control" [formControl]="horizonCtrl" min="1">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label">Folds</label>
+        <input type="number" class="form-control" [formControl]="foldsCtrl" min="1" max="6">
+      </div>
+      <div class="col-6 col-md-2 form-check mt-4">
+        <input class="form-check-input" type="checkbox" [formControl]="useCleansedCtrl" id="useCleansedChk">
+        <label class="form-check-label" for="useCleansedChk">Use Cleansed</label>
+      </div>
+      <div class="col-12 col-md-4">
+        <button cButton color="secondary" class="w-100 mt-4"
+                (click)="setDefaultsForPeriod(periodSelection.value)">
+          Defaults for {{ periodSelection.value }}
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-2 mt-2">
+      <div class="col">
+        <label class="form-label">Seasonal lags (CSV)</label>
+        <input type="text" class="form-control" [formControl]="xgbFeaturesForm.controls.seasonal_lags" placeholder="e.g. 12,24">
+      </div>
+      <div class="col">
+        <label class="form-label">Rolling windows (CSV)</label>
+        <input type="text" class="form-control" [formControl]="xgbFeaturesForm.controls.rolling_windows" placeholder="e.g. 3,6">
+      </div>
+      <div class="col-12 col-md-3 d-flex align-items-end">
+        <div class="form-check me-3">
+          <input class="form-check-input" type="checkbox" [formControl]="xgbFeaturesForm.controls.use_log1p" id="useLog">
+          <label class="form-check-label" for="useLog">log1p target</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" [formControl]="xgbFeaturesForm.controls.two_stage" id="twoStage">
+          <label class="form-check-label" for="twoStage">Two-stage gate</label>
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Zero prob. ≥</label>
+        <input type="number" class="form-control" [formControl]="xgbFeaturesForm.controls.zero_prob_threshold" step="0.05" min="0" max="1">
+      </div>
+    </div>
+
+    <details class="mt-2">
+      <summary><strong>Advanced model parameters</strong></summary>
+      <div class="row gy-2 mt-2">
+        <div class="col-6 col-md-2"><label class="form-label">Trees</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.n_estimators" min="50" step="50"></div>
+        <div class="col-6 col-md-2"><label class="form-label">Learning rate</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.learning_rate" step="0.01" min="0.01" max="0.5"></div>
+        <div class="col-6 col-md-2"><label class="form-label">Max depth</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.max_depth" min="2" max="12"></div>
+        <div class="col-6 col-md-2"><label class="form-label">Subsample</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.subsample" step="0.05" min="0.5" max="1"></div>
+        <div class="col-6 col-md-2"><label class="form-label">Cols by tree</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.colsample_bytree" step="0.05" min="0.5" max="1"></div>
+        <div class="col-6 col-md-2"><label class="form-label">λ (reg_lambda)</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.reg_lambda" step="0.1" min="0"></div>
+
+        <div class="col-6 col-md-2"><label class="form-label">α (reg_alpha)</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.reg_alpha" step="0.1" min="0"></div>
+        <div class="col-6 col-md-2"><label class="form-label">min_child_weight</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.min_child_weight" step="0.1" min="0"></div>
+        <div class="col-6 col-md-2"><label class="form-label">gamma</label>
+          <input type="number" class="form-control" [formControl]="xgbParamsForm.controls.gamma" step="0.1" min="0"></div>
+      </div>
+    </details>
+  </c-card-body>
+</c-card>

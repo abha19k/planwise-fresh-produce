@@ -1,0 +1,482 @@
+<!-- src/app/views/data/supply-data/supply-data.component.html -->
+
+<div class="container-fluid" style="padding: 16px;">
+  <c-card>
+    <c-card-header>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h4 class="mb-0 fw-bold">Supply Data</h4>
+          <small class="text-muted">
+            View BOM, Lot Size, Safety Stock, Inventory, Sourcing Orders,
+            Product &amp; Item Level Forecasts, and Recommended Sourcing Orders
+          </small>
+        </div>
+      </div>
+    </c-card-header>
+
+    <c-card-body>
+      <!-- Tabs -->
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item" *ngFor="let tab of tabs">
+          <button
+            type="button"
+            class="nav-link"
+            [class.active]="activeTab === tab.id"
+            (click)="setTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        </li>
+      </ul>
+
+      <!-- Error message -->
+      <div *ngIf="errorMessage" class="alert alert-danger py-2">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading && !errorMessage" class="text-muted mb-2">
+        Loading supply data...
+      </div>
+
+      <!-- BOM TAB -->
+      <div *ngIf="activeTab === 'bom'">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Bill of Materials</h5>
+          <small class="text-muted">Rows: {{ bomItems.length }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th class="text-end">Qty</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of bomItems">
+                <td>{{ row.ProductID }}</td>
+                <td>{{ row.ProductName }}</td>
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.ItemName }}</td>
+                <td class="text-end">{{ row.ItemQty }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LOT SIZE TAB -->
+      <div *ngIf="activeTab === 'lotsize'">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Lot Size</h5>
+          <small class="text-muted">Rows: {{ lotSizeItems.length }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th class="text-end">Lot Size</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of lotSizeItems">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.ItemName }}</td>
+                <td class="text-end">{{ row.LotSize }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SAFETY STOCK TAB -->
+      <div *ngIf="activeTab === 'safetystock'">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Safety Stock</h5>
+          <small class="text-muted">Rows: {{ safetyStockItems.length }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th>Safety Stock Rule</th>
+                <th class="text-end">Days of Safety Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of safetyStockItems">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.ItemName }}</td>
+                <td>{{ row.SafetyStockRule }}</td>
+                <td class="text-end">{{ row.DaysOfSafetyStock }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- INVENTORY TAB -->
+      <div *ngIf="activeTab === 'inventory'">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Inventory</h5>
+          <small class="text-muted">Rows: {{ inventoryItems.length }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Location ID</th>
+                <th class="text-end">Qty</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of inventoryItems">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.LocationID }}</td>
+                <td class="text-end">{{ row.Qty }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SOURCING ORDER TAB -->
+      <div *ngIf="activeTab === 'sourcingorder'">
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Confirmed Sourcing Orders</h5>
+          <small class="text-muted">Rows: {{ sourcingOrderItems.length }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Location ID</th>
+                <th>Arrival Date</th>
+                <th class="text-end">Qty</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of sourcingOrderItems">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.LocationID }}</td>
+                <td>{{ row.ArrivalDate || '-' }}</td>
+                <td class="text-end">{{ row.Qty }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PRODUCT-LEVEL FORECAST TAB -->
+      <div *ngIf="activeTab === 'forecast'">
+        <div class="mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="mb-0">Forecast (Product &amp; Location)</h5>
+            <small class="text-muted">
+              Qty aggregated over all Types and Channels for each Product &amp; Location.
+            </small>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <label class="mb-0 me-1">Period:</label>
+            <select
+              class="form-select form-select-sm"
+              style="width: auto;"
+              [(ngModel)]="forecastPeriod"
+              (ngModelChange)="onForecastPeriodChange($event)"
+            >
+              <option [ngValue]="'daily'">Daily</option>
+              <option [ngValue]="'weekly'">Weekly</option>
+              <option [ngValue]="'monthly'">Monthly</option>
+            </select>
+            <small class="text-muted">Rows: {{ forecastRows.length }}</small>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Product ID</th>
+                <th>Location ID</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th class="text-end">Qty</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of forecastRows">
+                <td>{{ row.ProductID }}</td>
+                <td>{{ row.LocationID }}</td>
+                <td>{{ row.StartDate }}</td>
+                <td>{{ row.EndDate }}</td>
+                <td class="text-end">{{ row.Qty | number : '1.0-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ITEM LEVEL FORECAST TAB -->
+      <div *ngIf="activeTab === 'itemforecast'">
+        <div class="mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="mb-0">Item Level Forecast</h5>
+            <small class="text-muted">
+              Item demand derived from Product Forecast × BOM.
+            </small>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <label class="mb-0 me-1">Period:</label>
+            <select
+              class="form-select form-select-sm"
+              style="width: auto;"
+              [(ngModel)]="itemForecastPeriod"
+              (ngModelChange)="onItemForecastPeriodChange($event)"
+            >
+              <option [ngValue]="'daily'">Daily</option>
+              <option [ngValue]="'weekly'">Weekly</option>
+              <option [ngValue]="'monthly'">Monthly</option>
+            </select>
+            <small class="text-muted">Rows: {{ itemForecastRows.length }}</small>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th>Location ID</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th class="text-end">Qty</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of itemForecastRows">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.ItemName }}</td>
+                <td>{{ row.LocationID }}</td>
+                <td>{{ row.StartDate }}</td>
+                <td>{{ row.EndDate }}</td>
+                <td class="text-end">{{ row.Qty | number : '1.0-2' }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RECOMMENDED SOURCING ORDER TAB -->
+      <div *ngIf="activeTab === 'recommended'">
+        <div class="mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="mb-0">Recommended Sourcing Orders</h5>
+            <small class="text-muted">
+              MRP-style orders based on Item Forecast, Lot Size, Inventory, Confirmed Orders, and Safety Stock.
+            </small>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <label class="mb-0 me-1">Period:</label>
+            <select
+              class="form-select form-select-sm"
+              style="width: auto;"
+              [(ngModel)]="recommendedPeriod"
+              (ngModelChange)="onRecommendedPeriodChange($event)"
+            >
+              <option [ngValue]="'daily'">Daily</option>
+              <option [ngValue]="'weekly'">Weekly</option>
+              <option [ngValue]="'monthly'">Monthly</option>
+            </select>
+            <small class="text-muted">Rows: {{ recommendedRows.length }}</small>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table cTable class="table table-sm table-striped table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th>Location ID</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th class="text-end">Recommended Qty</th>
+                <th>Unit of Measurement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of recommendedRows">
+                <td>{{ row.ItemID }}</td>
+                <td>{{ row.ItemName }}</td>
+                <td>{{ row.LocationID }}</td>
+                <td>{{ row.StartDate }}</td>
+                <td>{{ row.EndDate }}</td>
+                <td class="text-end">{{ row.Qty | number : '1.0-2' }}</td>
+                <td>{{ row.UnitofMeasurement }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 🔹 Inventory Profile tab -->
+<div *ngIf="activeTab === 'invProfile'">
+  <h5 class="mb-3 fw-bold">Inventory Profile (Item × Location)</h5>
+
+  <!-- Filters -->
+  <div class="d-flex flex-wrap gap-2 mb-3 align-items-end">
+    <div>
+      <label class="form-label mb-1">Item</label>
+      <select class="form-select"
+              [(ngModel)]="selectedItemId"
+              (ngModelChange)="loadInventoryProfile()">
+        <option *ngFor="let it of itemsForSelect" [ngValue]="it.ItemID">
+          {{ it.ItemID }} – {{ it.ItemName }}
+        </option>
+      </select>
+    </div>
+
+    <div>
+      <label class="form-label mb-1">Location</label>
+      <select class="form-select"
+              [(ngModel)]="selectedLocationId"
+              (ngModelChange)="loadInventoryProfile()">
+        <option *ngFor="let loc of locationsForSelect" [ngValue]="loc.LocationID">
+          {{ loc.LocationID }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div *ngIf="inventoryProfile?.length; else noInvProfile">
+    <svg [attr.viewBox]="'0 0 640 280'"
+     class="w-100 border rounded mb-3">
+
+  <!-- axes -->
+  <line x1="40" y1="20" x2="40" y2="260" stroke-width="1"></line>
+  <line x1="40" y1="260" x2="620" y2="260" stroke-width="1"></line>
+
+  <!-- 🔹 Y-axis tick labels -->
+  <ng-container *ngFor="let val of yTicks">
+    <text
+      x="35"
+      [attr.y]="getYForValue(val)"
+      text-anchor="end"
+      style="font-size: 10px;"
+    >
+      {{ val | number:'1.0-0' }}
+    </text>
+  </ng-container>
+
+  <!-- safety stock -->
+  <polyline
+    *ngIf="safetyPoints"
+    [attr.points]="safetyPoints"
+    stroke-width="2"
+    stroke="black"
+    fill="none"
+  ></polyline>
+
+  <!-- end-of-day inventory -->
+  <polyline
+    *ngIf="inventoryPoints"
+    [attr.points]="inventoryPoints"
+    stroke-width="2"
+    stroke="black"
+    stroke-dasharray="4 3"
+    fill="none"
+  ></polyline>
+
+  <!-- X-axis dates -->
+  <ng-container *ngIf="inventoryProfile as pts">
+    <ng-container *ngFor="let p of pts; let i = index">
+      <text
+        [attr.x]="getXForIndex(i, pts.length)"
+        y="275"
+        text-anchor="middle"
+        style="font-size: 10px;"
+      >
+        {{ p.Date }}
+      </text>
+    </ng-container>
+  </ng-container>
+</svg>
+
+
+
+
+
+
+    <!-- Legend + table for debugging -->
+    <div class="mb-2">
+      <span class="me-3"><strong>—</strong> Safety Stock Qty</span>
+      <span class="me-3"><strong>– –</strong> End-of-day Inventory</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th class="text-end">Demand</th>
+            <th class="text-end">Safety Stock</th>
+            <th class="text-end">Inbound (Confirmed)</th>
+            <th class="text-end">Recommended Order</th>
+            <th class="text-end">End-of-day Inv.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of inventoryProfile">
+            <td>{{ r.Date }}</td>
+            <td class="text-end">{{ r.DemandQty | number: '1.0-2' }}</td>
+            <td class="text-end">{{ r.SafetyStockQty | number: '1.0-2' }}</td>
+            <td class="text-end">{{ r.InboundConfirmedQty | number: '1.0-2' }}</td>
+            <td class="text-end">{{ r.RecommendedOrderQty | number: '1.0-2' }}</td>
+            <td class="text-end">{{ r.EndInventoryQty | number: '1.0-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <ng-template #noInvProfile>
+    <div class="text-muted fst-italic">
+      No inventory profile data for the selected item and location.
+    </div>
+  </ng-template>
+</div>
+
+
+    </c-card-body>
+  </c-card>
+</div>

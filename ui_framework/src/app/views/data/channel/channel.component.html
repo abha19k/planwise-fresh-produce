@@ -1,0 +1,124 @@
+<!-- 🔖 Saved Search + Load -->
+<c-row class="mb-3">
+  <c-col sm="8">
+    <label>Saved Search</label>
+    <select class="form-select" [formControl]="selectedSavedIndex">
+      <option [ngValue]="-1">-- Choose a saved search --</option>
+      <option *ngFor="let s of savedSearches; let i = index" [ngValue]="i">
+        {{ s.name }} — {{ s.query }}
+      </option>
+    </select>
+    <small class="text-muted">
+      Only saved queries that include channel attributes will load on this page.
+    </small>
+  </c-col>
+  <c-col sm="4" class="d-flex align-items-end">
+    <button class="btn btn-primary w-100"
+            (click)="loadFromSaved()"
+            [disabled]="loading || (selectedSavedIndex.value ?? -1) === -1">
+      Load
+    </button>
+  </c-col>
+</c-row>
+
+<!-- ⚠️ Status -->
+<c-row *ngIf="errorMessage" class="mb-2">
+  <c-col>
+    <div class="alert alert-danger mb-0">{{ errorMessage }}</div>
+  </c-col>
+</c-row>
+<c-row *ngIf="loading" class="mb-2">
+  <c-col>
+    <div class="alert alert-info mb-0">Loading…</div>
+  </c-col>
+</c-row>
+
+<!-- 🔍 Typed Search + Export -->
+<c-row class="mb-4">
+  <c-col sm="3">
+    <label>Search by</label>
+    <select [formControl]="searchField" class="form-select">
+      <option value="ChannelID">ChannelID</option>
+      <option value="ChannelDescr">ChannelDescr</option>
+      <option value="Level">Level</option>
+    </select>
+  </c-col>
+  <c-col sm="5">
+    <label>Search term</label>
+    <input type="text" class="form-control" [formControl]="searchTerm" placeholder="Type to search..." />
+  </c-col>
+  <c-col sm="2" class="d-flex align-items-end">
+    <button class="btn btn-outline-secondary w-100" (click)="clearSearch()">
+      Clear Search
+    </button>
+  </c-col>
+  <c-col sm="2" class="d-flex align-items-end">
+    <button class="btn btn-outline-primary w-100" (click)="exportToCSV()" [disabled]="!filteredData.length">
+      Export to CSV
+    </button>
+  </c-col>
+</c-row>
+
+<!-- ✅ Empty state before search -->
+<c-row *ngIf="!hasRunSearch && !loading">
+  <c-col>
+    <div class="alert alert-light border mb-0">
+      Start by typing a search term (or load a saved search) to view channel data.
+    </div>
+  </c-col>
+</c-row>
+
+<!-- 📊 Channel Data Table (only after search) -->
+<c-row *ngIf="hasRunSearch">
+  <c-col>
+    <c-card>
+      <c-card-header>Channel Data</c-card-header>
+      <c-card-body>
+
+        <!-- no results after search -->
+        <div *ngIf="hasRunSearch && !filteredData.length && !loading" class="alert alert-warning mb-0">
+          No channels matched your search.
+        </div>
+
+        <table *ngIf="filteredData.length"
+               cTable striped responsive hover class="table mb-0 border">
+          <thead>
+            <tr>
+              <th (click)="sortBy('ChannelID')">ChannelID</th>
+              <th (click)="sortBy('ChannelDescr')">ChannelDescr</th>
+              <th (click)="sortBy('Level')">Level</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of paginatedData; track item.ChannelID) {
+              <tr>
+                <td>{{ item.ChannelID }}</td>
+                <td>{{ item.ChannelDescr }}</td>
+                <td>{{ item.Level }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </c-card-body>
+
+      <!-- 📃 Pagination Controls -->
+      <c-card-footer class="d-flex justify-content-center" *ngIf="totalPages > 1">
+        <nav>
+          <ul class="pagination mb-0">
+            <li class="page-item" [class.disabled]="currentPage === 1">
+              <a class="page-link" (click)="setPage(currentPage - 1)">Previous</a>
+            </li>
+            @for (page of pageRange(); track page) {
+              <li class="page-item" [class.active]="page === currentPage">
+                <a class="page-link" (click)="setPage(page)">{{ page }}</a>
+              </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage === totalPages">
+              <a class="page-link" (click)="setPage(currentPage + 1)">Next</a>
+            </li>
+          </ul>
+        </nav>
+      </c-card-footer>
+    </c-card>
+  </c-col>
+</c-row>

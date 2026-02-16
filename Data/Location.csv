@@ -1,0 +1,7 @@
+﻿LocationID,LocationDescr,Level,IsActive
+LOC_ALL,All Locations,3,TRUE
+NL,Netherlands,2,TRUE
+NL-NH,Noord-Holland,1,TRUE
+NL-ZH,Zuid-Holland,1,TRUE
+NL-NB,Noord-Brabant,1,TRUE
+NL-GE,Gelderland,1,TRUE

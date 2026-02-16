@@ -1,0 +1,12 @@
+﻿ProductID,ProductDescr,Level,BusinessUnit,IsDailyForecastRequired,IsNew,ProductFamily
+PROD_ALL,All Products,3,Fruit,TRUE,FALSE,ALL
+APPLE_FAMILY,Apple Family,2,Fruit,TRUE,FALSE,Apple
+PEAR_FAMILY,Pear Family,2,Fruit,TRUE,FALSE,Pear
+APPLE_GALA,Gala Apple,1,Fruit,TRUE,FALSE,Apple
+APPLE_ELSTAR,Elstar Apple,1,Fruit,TRUE,FALSE,Apple
+APPLE_JONAGOLD,Jonagold Apple,1,Fruit,TRUE,FALSE,Apple
+APPLE_GRANNY_SMITH,Granny Smith Apple,1,Fruit,TRUE,TRUE,Apple
+PEAR_CONFERENCE,Conference Pear,1,Fruit,TRUE,FALSE,Pear
+PEAR_COMICE,Comice Pear,1,Fruit,TRUE,FALSE,Pear
+PEAR_WILLIAMS,Williams Pear,1,Fruit,TRUE,TRUE,Pear
+PEAR_ABATE,Abate Pear,1,Fruit,TRUE,FALSE,Pear

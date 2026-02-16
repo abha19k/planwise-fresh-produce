@@ -1,0 +1,10 @@
+﻿LocationID,Location Descr,Level,Geography
+Netherlands,Netherlands,3,EU
+Gelderland,Gelderland,2,Netherlands
+StoreArnhemCenter,StoreArnhemCenter,1,Gelderland
+StoreNijmegenCenter,StoreNijmegenCenter,1,Gelderland
+StoreEdeCenter,StoreEdeCenter,1,Gelderland
+StoreElstCenter,StoreElstCenter,1,Gelderland
+North Holland,North Holland,2,Netherlands
+StoreAmsterdamCenter,StoreAmsterdamCenter,1,North Holland
+StoreAmsterdamZuid,StoreAmsterdamZuid,1,North Holland

@@ -1,0 +1,98 @@
+<!-- Controls -->
+<c-card class="mb-3">
+  <c-card-header>Classified Forecast Elements (Saved)</c-card-header>
+  <c-card-body>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-3">
+        <label class="form-label">Period</label>
+        <select class="form-select" [formControl]="period">
+          <option value="Daily">Daily</option>
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+        </select>
+      </div>
+
+      <div class="col-sm-3">
+        <div class="form-check mt-4">
+          <input
+            id="inclInactive"
+            type="checkbox"
+            class="form-check-input"
+            [formControl]="includeInactive"
+          />
+          <label class="form-check-label" for="inclInactive">
+            Include inactive (history)
+          </label>
+        </div>
+      </div>
+
+      <div class="col-sm-3">
+        <button class="btn btn-primary w-100" (click)="refresh()" [disabled]="loading">
+          {{ loading ? 'Loading…' : 'Refresh' }}
+        </button>
+      </div>
+
+      <div class="col-sm-3 text-sm-end d-flex gap-2 justify-content-sm-end">
+        <button class="btn btn-outline-secondary" (click)="runInPlanning()">
+          Re-run in Planning Run
+        </button>
+        <button class="btn btn-outline-primary" (click)="exportCSV()" [disabled]="!rows.length">
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="errorMsg" class="alert alert-danger mt-3 mb-0">{{ errorMsg }}</div>
+  </c-card-body>
+</c-card>
+
+<!-- Table -->
+<c-card>
+  <c-card-header>Results</c-card-header>
+  <c-card-body>
+    <div *ngIf="!rows.length && !loading" class="text-muted">
+      No classified results found for this period.
+      Run the process in <strong>Planning Run → Classify Forecast Elements</strong> first.
+    </div>
+
+    <div class="table-responsive" *ngIf="rows.length">
+      <table cTable striped hover class="table mb-0 border">
+        <thead>
+          <tr>
+            <th (click)="sortBy('ProductID')">ProductID</th>
+            <th (click)="sortBy('ChannelID')">ChannelID</th>
+            <th (click)="sortBy('LocationID')">LocationID</th>
+            <th (click)="sortBy('Period')">Period</th>
+            <th class="text-end" (click)="sortBy('adi')">ADI</th>
+            <th class="text-end" (click)="sortBy('cv2')">CV²</th>
+            <th (click)="sortBy('category')">Category</th>
+            <th (click)="sortBy('algorithm')">Chosen Model</th>
+            <th (click)="sortBy('created_at')">Created At</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of rows">
+            <td>{{ r.ProductID }}</td>
+            <td>{{ r.ChannelID }}</td>
+            <td>{{ r.LocationID }}</td>
+            <td>{{ r.Period }}</td>
+            <td class="text-end">
+              {{ r.adi === null ? '—' : (r.adi | number : '1.2-2') }}
+            </td>
+            <td class="text-end">
+              {{ r.cv2 === null ? '—' : (r.cv2 | number : '1.2-2') }}
+            </td>
+            <td>{{ r.category }}</td>
+            <td><code>{{ r.algorithm }}</code></td>
+            <td>
+              {{ r.created_at ? (r.created_at | date : 'yyyy-MM-dd HH:mm') : '—' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </c-card-body>
+  <c-card-footer class="text-muted small">
+    Showing {{ rows.length }} row(s).
+  </c-card-footer>
+</c-card>

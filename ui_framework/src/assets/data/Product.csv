@@ -1,0 +1,5 @@
+﻿ProductID,ProductDescr,Level,BusinessUnit,IsDailyForecastRequired,IsNew,ProductFamily
+AztecWrap,AztecWrap,1,FastFood,TRUE,FALSE,Mexican
+VeggieBurger,VeggieBurger,1,FastFood,FALSE,FALSE,Generic
+VeganChilly,VeganChilly,1,FastFood,FALSE,FALSE,Mexican
+PizzaRoma,PizzaRoma,1,FastFood,TRUE,TRUE,Italian
