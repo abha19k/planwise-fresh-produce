@@ -1,8 +1,8 @@
 👩‍💻 Author
+
 Abha Khakurdikar
 Founder – PlanWise
 Netherlands
-
 
 🌱 PlanWise Fresh Produce
 
@@ -26,7 +26,7 @@ PlanWise Fresh Produce enables:
 
 🗄 PostgreSQL-backed scalable data model
 
-The system is built to support enterprise-scale data with an extensible schema design.
+The system is built to support enterprise-scale data with extensible schema design.
 
 🏗 Architecture
 PlanWiseFreshProduce/
@@ -41,14 +41,19 @@ PlanWiseFreshProduce/
 Frontend
 
 Angular (Standalone components)
+
 CoreUI
+
 TypeScript
 
 Backend
 
 FastAPI
+
 PostgreSQL
+
 SQLAlchemy
+
 Psycopg2
 
 Database
@@ -58,53 +63,87 @@ PostgreSQL schema: planwise_fresh_produce
 📂 Data Model
 
 The database is designed around hierarchical enterprise structures:
+
 Product
+
 ProductID
+
 ProductDescr
+
 Level
+
 BusinessUnit
+
 ProductFamily
+
 IsDailyForecastRequired
+
 IsNew
 
 Channel
+
 ChannelID
+
 ChannelDescr
+
 Level
+
 Location
+
 LocationID
+
 LocationDescr
+
 Level
+
 Geography
 
 History Tables
+
 Daily / Weekly / Monthly
+
 ProductID, ChannelID, LocationID
+
 StartDate, EndDate
+
 Qty, NetPrice
+
 Level
 
 Forecast Tables
+
 Daily / Weekly / Monthly
+
 Method
+
 Type
+
 Period
+
 Qty
 
 🧼 Cleanse Module
 
 Supports:
+
 Cleanse Profiles
+
 Saved Search integration
+
 Rule-based adjustments
+
 Future: automated correction pipelines
 
 🔍 Saved Search
 
 Users can:
+
 Select Product / Channel / Location attributes
+
 Apply AND / OR logic
+
 Save named searches
+
 Reuse searches across modules
 
 ⚙️ Setup Instructions
@@ -120,9 +159,12 @@ pip install -r requirements.txt
 
 
 Run backend:
+
 uvicorn main:app --reload
 
+
 Backend runs on:
+
 http://localhost:8000
 
 3️⃣ Frontend Setup
@@ -132,44 +174,68 @@ ng serve
 
 
 Frontend runs on:
+
 http://localhost:4200
 
 🗄 Database Setup
+
 Create database:
+
 createdb planwise
 
+
 Restore schema:
+
 psql -U <your-user> -d planwise -f db/planwise_fresh_produce_schema.sql
 
 🔐 Environment Variables
 
 Backend expects:
+
 DATABASE_URL=postgresql://user:password@localhost:5432/planwise
+
+
 Create a .env file in ui_backend/.
 
 🌍 Vision
+
 PlanWise Fresh Produce is designed as a scalable forecasting engine for:
+
 High-SKU fresh produce businesses
+
 Weather-sensitive supply chains
+
 Multi-channel retail operations
+
 Enterprise scenario simulation
 
 Future roadmap includes:
+
 Scenario cloning engine
+
 Weather integration
+
 Promotion modeling
+
 Forecast accuracy dashboard
+
 Automated ML model benchmarking
+
 Role-based access control
 
 📈 Project Status
 
 Active development.
-Core modules:
-✔ History
-✔ Forecast
-✔ Saved Search
-✔ Cleanse Profiles
-🚧 Scenario Manager (next)
 
+Core modules:
+
+✔ History
+
+✔ Forecast
+
+✔ Saved Search
+
+✔ Cleanse Profiles
+
+🚧 Scenario Manager (next)
 
