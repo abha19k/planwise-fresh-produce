@@ -1,0 +1,238 @@
+<c-card>
+    <c-card-header>
+      <div class="mb-3 small">
+        <strong>Current Scenario:</strong>
+        {{ scenarioService.selectedScenario()?.name || 'Base' }}
+      </div>
+  
+      <div [formGroup]="filterForm">
+        <c-row class="g-2 align-items-end">
+          <c-col md="2">
+            <label class="form-label">ProductID</label>
+            <select class="form-select" formControlName="productid">
+              <option value="">(Any)</option>
+              <option *ngFor="let v of productIds" [value]="v">{{ v }}</option>
+            </select>
+          </c-col>
+  
+          <c-col md="2">
+            <label class="form-label">ChannelID</label>
+            <select class="form-select" formControlName="channelid">
+              <option value="">(Any)</option>
+              <option *ngFor="let v of channelIds" [value]="v">{{ v }}</option>
+            </select>
+          </c-col>
+  
+          <c-col md="2">
+            <label class="form-label">LocationID</label>
+            <select class="form-select" formControlName="locationid">
+              <option value="">(Any)</option>
+              <option *ngFor="let v of locationIds" [value]="v">{{ v }}</option>
+            </select>
+          </c-col>
+  
+          <c-col md="2">
+            <label class="form-label">Date From</label>
+            <input type="date" class="form-control" formControlName="date_from" />
+          </c-col>
+  
+          <c-col md="2">
+            <label class="form-label">Date To</label>
+            <input type="date" class="form-control" formControlName="date_to" />
+          </c-col>
+  
+          <c-col md="2" class="d-flex gap-2">
+            <button cButton color="primary" class="w-100" (click)="loadPromotions()" [disabled]="loading">
+              Load
+            </button>
+          </c-col>
+        </c-row>
+      </div>
+  
+      <c-row class="mt-2">
+        <c-col class="d-flex gap-2 flex-wrap">
+          <button cButton color="secondary" (click)="clearFilters()">
+            Clear
+          </button>
+  
+          <button cButton color="info" (click)="startAdd()">
+            Add Promotion
+          </button>
+  
+          <button cButton color="success" (click)="exportToCSV()" [disabled]="!rows.length">
+            Export CSV
+          </button>
+        </c-col>
+      </c-row>
+    </c-card-header>
+  
+    <c-card-body>
+      <div *ngIf="errorMessage" class="alert alert-danger mb-3">
+        {{ errorMessage }}
+      </div>
+  
+      <div *ngIf="successMessage" class="alert alert-success mb-3">
+        {{ successMessage }}
+      </div>
+  
+      <div *ngIf="loadingDropdowns" class="alert alert-info mb-3">
+        Loading dropdown values...
+      </div>
+  
+      <div *ngIf="loading" class="alert alert-info mb-3">
+        Loading promotions...
+      </div>
+  
+      <c-card *ngIf="isEditing" class="mb-3">
+        <c-card-header>
+          {{ isNewRow ? 'Add Promotion' : 'Edit Promotion' }}
+        </c-card-header>
+  
+        <c-card-body>
+          <div [formGroup]="editForm">
+            <c-row class="g-3">
+              <c-col md="3">
+                <label class="form-label">PromoID *</label>
+                <input class="form-control" formControlName="PromoID" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">PromoName</label>
+                <input class="form-control" formControlName="PromoName" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">StartDate *</label>
+                <input type="date" class="form-control" formControlName="StartDate" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">EndDate *</label>
+                <input type="date" class="form-control" formControlName="EndDate" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">ProductID</label>
+                <select class="form-select" formControlName="ProductID">
+                  <option value="">(Any)</option>
+                  <option *ngFor="let v of productIds" [value]="v">{{ v }}</option>
+                </select>
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">ChannelID</label>
+                <select class="form-select" formControlName="ChannelID">
+                  <option value="">(Any)</option>
+                  <option *ngFor="let v of channelIds" [value]="v">{{ v }}</option>
+                </select>
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">LocationID</label>
+                <select class="form-select" formControlName="LocationID">
+                  <option value="">(Any)</option>
+                  <option *ngFor="let v of locationIds" [value]="v">{{ v }}</option>
+                </select>
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">PromoLevel</label>
+                <input type="number" class="form-control" formControlName="PromoLevel" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">DiscountPct</label>
+                <input type="number" class="form-control" formControlName="DiscountPct" />
+              </c-col>
+  
+              <c-col md="3">
+                <label class="form-label">UpliftPct</label>
+                <input type="number" class="form-control" formControlName="UpliftPct" />
+              </c-col>
+  
+              <c-col md="6">
+                <label class="form-label">Notes</label>
+                <input class="form-control" formControlName="Notes" />
+              </c-col>
+            </c-row>
+          </div>
+  
+          <div class="mt-3 d-flex gap-2">
+            <button cButton color="success" (click)="savePromotion()" [disabled]="saving">
+              {{ saving ? 'Saving...' : 'Save Promotion' }}
+            </button>
+  
+            <button cButton color="secondary" (click)="cancelEdit()" [disabled]="saving">
+              Cancel
+            </button>
+          </div>
+        </c-card-body>
+      </c-card>
+  
+      <div *ngIf="!loading && rows.length > 0" class="table-responsive">
+        <table cTable striped hover class="table mb-0 border">
+          <thead>
+            <tr>
+              <th>PromoID</th>
+              <th>PromoName</th>
+              <th>StartDate</th>
+              <th>EndDate</th>
+              <th>ProductID</th>
+              <th>ChannelID</th>
+              <th>LocationID</th>
+              <th>PromoLevel</th>
+              <th>DiscountPct</th>
+              <th>UpliftPct</th>
+              <th>Notes</th>
+              <th style="min-width: 220px;">Actions</th>
+            </tr>
+          </thead>
+  
+          <tbody>
+            <tr *ngFor="let r of rows">
+              <td>{{ r.PromoID }}</td>
+              <td>{{ r.PromoName }}</td>
+              <td>{{ r.StartDate }}</td>
+              <td>{{ r.EndDate }}</td>
+              <td>{{ r.ProductID }}</td>
+              <td>{{ r.ChannelID }}</td>
+              <td>{{ r.LocationID }}</td>
+              <td>{{ r.PromoLevel }}</td>
+              <td>{{ r.DiscountPct }}</td>
+              <td>{{ r.UpliftPct }}</td>
+              <td>{{ r.Notes }}</td>
+              <td>
+                <div class="d-flex gap-2 flex-wrap">
+                  <button cButton color="primary" size="sm" (click)="startEdit(r)">
+                    Edit
+                  </button>
+  
+                  <button cButton color="info" size="sm" (click)="duplicateToNew(r)">
+                    Duplicate
+                  </button>
+  
+                  <button
+                    cButton
+                    color="danger"
+                    size="sm"
+                    (click)="deletePromotion(r)"
+                    [disabled]="deletingPromoId === r.PromoID"
+                  >
+                    {{ deletingPromoId === r.PromoID ? 'Deleting...' : 'Delete' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+  
+      <div *ngIf="!loading && rows.length === 0 && !errorMessage" class="text-muted text-center mt-3">
+        No promotions loaded yet. Select a date range and click Load.
+      </div>
+    </c-card-body>
+  
+    <c-card-footer *ngIf="rows.length > 0">
+      <strong>Total Rows:</strong> {{ totalRows }}
+    </c-card-footer>
+  </c-card>

@@ -1,0 +1,23 @@
+<c-card class="mb-3">
+  <c-card-header>Scenario</c-card-header>
+  <c-card-body>
+    <c-row class="align-items-end">
+      <c-col md="6">
+        <label for="scenarioSelect" class="form-label">Selected Scenario</label>
+        <select
+          id="scenarioSelect"
+          class="form-select"
+          [ngModel]="scenarioService.selectedScenarioId()"
+          (ngModelChange)="onScenarioChange($event)"
+        >
+          <option *ngFor="let s of scenarioService.scenarios()" [ngValue]="s.scenario_id">
+            {{ s.name }}{{ s.is_base ? ' (Base)' : '' }}
+          </option>
+        </select>
+      </c-col>
+    </c-row>
+
+    <div *ngIf="loading" class="mt-2">Loading scenarios...</div>
+    <div *ngIf="error" class="mt-2 text-danger">{{ error }}</div>
+  </c-card-body>
+</c-card>

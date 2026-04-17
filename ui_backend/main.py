@@ -20,8 +20,16 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from fastapi import Query, HTTPException
 from sqlalchemy import text
+from datetime import date
+import re
+from typing import Any, Dict, Optional
+from fastapi import Query, HTTPException
+from sqlalchemy import text
+import math
+import numpy as np
+from datetime import datetime, date
 
-import forecast  # must expose run_one_job_df + JOBS + GRAIN_CFG
+import forecast  
 
 
 # ------------------------------------------------------------
@@ -41,6 +49,8 @@ PRODUCT_TABLE = os.getenv("PRODUCT_TABLE", "product")
 CHANNEL_TABLE = os.getenv("CHANNEL_TABLE", "channel")
 LOCATION_TABLE = os.getenv("LOCATION_TABLE", "location")
 TRIPLET_TABLE = os.getenv("TRIPLET_TABLE", "forecastelement")
+
+LOCATION_COLS = ["LocationID", "LocationDescr", "Level", "IsActive"]
 
 DEFAULT_WEATHER_TABLE = os.getenv("WEATHER_TABLE", "weather_daily")
 DEFAULT_PROMO_TABLE = os.getenv("PROMO_TABLE", "promotions")
@@ -77,8 +87,10 @@ CLEANSED_HISTORY_COLS = ["ProductID","ChannelID","LocationID","StartDate","EndDa
 
 CLASSIFIED_FE_TABLE = "classified_forecast_elements"
 
-# ✅ match your DB: location table has IsActive (no Geography)
-LOCATION_COLS = ["LocationID", "LocationDescr", "Level", "IsActive"]
+SCENARIO_TABLE = os.getenv("SCENARIO_TABLE", "scenario")
+SCENARIO_OVERRIDE_TABLE = os.getenv("SCENARIO_OVERRIDE_TABLE", "scenario_override")
+
+
 
 ENGINE = None
 
@@ -111,6 +123,7 @@ app.add_middleware(
 # ------------------------------------------------------------
 class RunOneDBRequest(BaseModel):
     db_schema: str = Field(default=DEFAULT_SCHEMA)
+    scenario_id: int = Field(default=1, ge=1)
 
     level: Optional[str] = Field(default=None, description="e.g. 111 / 121 / 221")
     period: str = Field(..., description="Daily / Weekly / Monthly")
@@ -124,10 +137,11 @@ class RunOneDBRequest(BaseModel):
     weather_table: str = Field(default=DEFAULT_WEATHER_TABLE)
     promo_table: str = Field(default=DEFAULT_PROMO_TABLE)
     tag: Optional[str] = Field(default=None, description="Output tag used in filenames")
-
+    save_to_db: bool = True
 
 class RunAllDBRequest(BaseModel):
     db_schema: str = Field(default=DEFAULT_SCHEMA)
+    scenario_id: int = Field(default=1, ge=1)
     weather_table: str = Field(default=DEFAULT_WEATHER_TABLE)
     promo_table: str = Field(default=DEFAULT_PROMO_TABLE)
 
@@ -144,6 +158,7 @@ class CleanseProfileIn(BaseModel):
 class CleansedIngestRequest(BaseModel):
     period: str  # daily/weekly/monthly (from Angular)
     rows: List[Dict[str, object]]
+    scenario_id: Optional[int] = 0
 
 
 class SavedSearchIn(BaseModel):
@@ -151,10 +166,11 @@ class SavedSearchIn(BaseModel):
     query: str
 
 # Keep a simple in-memory "last computed" timestamp per schema+period
-_LAST_CLASSIFY_COMPUTED: Dict[str, str] = {}  # key = f"{schema}:{period_slug}" -> iso ts
+_LAST_CLASSIFY_COMPUTED: Dict[str, str] = {}  # key = f"{schema}:{scenario_id}:{period_slug}" -> iso ts
 
 class ClassifyComputeRequest(BaseModel):
     period: str  # 'daily' | 'weekly' | 'monthly'
+    scenario_id: Optional[int] = 1
     lookback_buckets: Optional[int] = None
     min_sum: Optional[float] = None
 
@@ -170,7 +186,29 @@ class ClassifySaveRow(BaseModel):
 
 class ClassifySaveRequest(BaseModel):
     period: str  # 'daily' | 'weekly' | 'monthly'
+    scenario_id: Optional[int] = 1
     rows: List[ClassifySaveRow] = []
+
+class ScenarioOut(BaseModel):
+    scenario_id: int
+    name: str
+    parent_scenario_id: Optional[int] = None
+    is_base: bool
+    created_at: Optional[str] = None
+    created_by: Optional[str] = None
+    status: str
+
+class ScenarioCopyIn(BaseModel):
+    name: str
+    created_by: Optional[str] = None
+
+class OverrideUpsertIn(BaseModel):
+    table_name: str
+    pk: Dict[str, Any]
+    row: Optional[Dict[str, Any]] = None
+    is_deleted: bool = False
+    updated_by: Optional[str] = None
+
 
 # ------------------------------------------------------------
 # HELPERS
@@ -279,30 +317,74 @@ def _ensure_cleansed_history_table(db_schema: str):
     if ENGINE is None:
         ENGINE = get_engine()
 
-    ddl = f"""
-    CREATE TABLE IF NOT EXISTS {_qident(db_schema)}.{_qident(CLEANSED_HISTORY_TABLE)} (
-      id BIGSERIAL PRIMARY KEY,
-      "ProductID" TEXT NOT NULL,
-      "ChannelID" TEXT NOT NULL,
-      "LocationID" TEXT NOT NULL,
-      "StartDate" DATE NOT NULL,
-      "EndDate"   DATE NOT NULL,
-      "Period"    TEXT NOT NULL,
-      "Qty"       DOUBLE PRECISION NOT NULL,
-      "Level"     TEXT NULL,
-      "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
-      UNIQUE("ProductID","ChannelID","LocationID","StartDate","Period")
-    );
+    table_qual = f'{_qident(db_schema)}.{_qident(CLEANSED_HISTORY_TABLE)}'
 
-    CREATE INDEX IF NOT EXISTS idx_history_cleansed_keys
-      ON {_qident(db_schema)}.{_qident(CLEANSED_HISTORY_TABLE)}
-      ("ProductID","ChannelID","LocationID","Period");
-    """
     with ENGINE.begin() as conn:
-        for stmt in ddl.split(";"):
-            s = stmt.strip()
-            if s:
-                conn.execute(text(s + ";"))
+        # 1) Create latest table shape if table does not yet exist
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS {table_qual} (
+              id BIGSERIAL PRIMARY KEY,
+              "scenario_id" INTEGER NOT NULL DEFAULT 0,
+              "ProductID" TEXT NOT NULL,
+              "ChannelID" TEXT NOT NULL,
+              "LocationID" TEXT NOT NULL,
+              "StartDate" DATE NOT NULL,
+              "EndDate"   DATE NOT NULL,
+              "Period"    TEXT NOT NULL,
+              "Qty"       DOUBLE PRECISION NOT NULL,
+              "NetPrice"  DOUBLE PRECISION NULL,
+              "ListPrice" DOUBLE PRECISION NULL,
+              "Level"     TEXT NULL,
+              "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        """))
+
+        # 2) Upgrade older existing tables safely
+        conn.execute(text(f'''
+            ALTER TABLE {table_qual}
+            ADD COLUMN IF NOT EXISTS "scenario_id" INTEGER NOT NULL DEFAULT 0;
+        '''))
+
+        conn.execute(text(f'''
+            ALTER TABLE {table_qual}
+            ADD COLUMN IF NOT EXISTS "NetPrice" DOUBLE PRECISION NULL;
+        '''))
+
+        conn.execute(text(f'''
+            ALTER TABLE {table_qual}
+            ADD COLUMN IF NOT EXISTS "ListPrice" DOUBLE PRECISION NULL;
+        '''))
+
+        # 3) Drop old unique constraint if it exists
+        try:
+            conn.execute(text(f'''
+                ALTER TABLE {table_qual}
+                DROP CONSTRAINT IF EXISTS history_cleansed_ProductID_ChannelID_LocationID_StartDate_Period_key;
+            '''))
+        except Exception:
+            pass
+
+        # 4) Drop old indexes if they exist
+        conn.execute(text(f'''
+            DROP INDEX IF EXISTS {_qident(db_schema)}.{_qident("idx_history_cleansed_keys")};
+        '''))
+
+        conn.execute(text(f'''
+            DROP INDEX IF EXISTS {_qident(db_schema)}.{_qident("cleansed_history_uq_idx")};
+        '''))
+
+        # 5) Recreate scenario-aware indexes
+        conn.execute(text(f'''
+            CREATE UNIQUE INDEX IF NOT EXISTS cleansed_history_uq_idx
+            ON {table_qual}
+            ("scenario_id","ProductID","ChannelID","LocationID","StartDate","Period");
+        '''))
+
+        conn.execute(text(f'''
+            CREATE INDEX IF NOT EXISTS idx_history_cleansed_keys
+            ON {table_qual}
+            ("scenario_id","ProductID","ChannelID","LocationID","Period");
+        '''))
 
 
 def _period_ui_from_slug(slug: str) -> str:
@@ -322,23 +404,437 @@ def _ensure_classified_fe_table(db_schema: str):
 
     qual = _qualified(db_schema, CLASSIFIED_FE_TABLE)
 
-    ddl = text(f"""
-    CREATE TABLE IF NOT EXISTS {qual} (
-      "ProductID"  text NOT NULL,
-      "ChannelID"  text NOT NULL,
-      "LocationID" text NOT NULL,
-      "Period"     text NOT NULL, -- 'Daily'/'Weekly'/'Monthly'
-      "ADI"        double precision NULL,
-      "CV2"        double precision NULL,
-      "Category"   text NOT NULL,
-      "Algorithm"  text NOT NULL,
-      "CreatedAt"  timestamp with time zone NOT NULL DEFAULT now(),
-      "UpdatedAt"  timestamp with time zone NOT NULL DEFAULT now(),
-      PRIMARY KEY ("ProductID","ChannelID","LocationID","Period")
-    );
-    """)
     with ENGINE.begin() as conn:
-        conn.execute(ddl)
+        conn.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS {qual} (
+          "scenario_id" INTEGER NOT NULL DEFAULT 1,
+          "ProductID"  text NOT NULL,
+          "ChannelID"  text NOT NULL,
+          "LocationID" text NOT NULL,
+          "Period"     text NOT NULL,
+          "ADI"        double precision NULL,
+          "CV2"        double precision NULL,
+          "Category"   text NOT NULL,
+          "Algorithm"  text NOT NULL,
+          "CreatedAt"  timestamp with time zone NOT NULL DEFAULT now(),
+          "UpdatedAt"  timestamp with time zone NOT NULL DEFAULT now()
+        );
+        """))
+
+        conn.execute(text(f'''
+            ALTER TABLE {qual}
+            ADD COLUMN IF NOT EXISTS "scenario_id" INTEGER NOT NULL DEFAULT 1;
+        '''))
+
+        try:
+            conn.execute(text(f'''
+                ALTER TABLE {qual}
+                DROP CONSTRAINT IF EXISTS {CLASSIFIED_FE_TABLE}_pkey;
+            '''))
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text(f'''
+                ALTER TABLE {qual}
+                DROP CONSTRAINT IF EXISTS ux_classified_forecast_elements_key;
+            '''))
+        except Exception:
+            pass
+
+        conn.execute(text(f'''
+            DROP INDEX IF EXISTS {_qident(db_schema)}.{_qident("ux_classified_forecast_elements_key")};
+        '''))
+
+        conn.execute(text(f'''
+            DROP INDEX IF EXISTS {_qident(db_schema)}.{_qident("classified_fe_uq_idx")};
+        '''))
+
+        conn.execute(text(f'''
+            DROP INDEX IF EXISTS {_qident(db_schema)}.{_qident("classified_fe_lookup_idx")};
+        '''))
+
+        conn.execute(text(f'''
+            CREATE UNIQUE INDEX IF NOT EXISTS classified_fe_uq_idx
+            ON {qual}
+            ("scenario_id","ProductID","ChannelID","LocationID","Period");
+        '''))
+
+        conn.execute(text(f'''
+            CREATE INDEX IF NOT EXISTS classified_fe_lookup_idx
+            ON {qual}
+            ("scenario_id","Period","ProductID","ChannelID","LocationID");
+        '''))
+
+
+
+def _ensure_scenario_tables(db_schema: str):
+    """
+    Safety: in case someone runs API before running SQL migrations.
+    You already created these manually, but this keeps API robust.
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    # If they exist, this does nothing.
+    ddl = f"""
+    CREATE TABLE IF NOT EXISTS {_qident(db_schema)}.scenario (
+      scenario_id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      parent_scenario_id BIGINT NULL REFERENCES {_qident(db_schema)}.scenario(scenario_id),
+      is_base BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_by TEXT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS scenario_one_base
+      ON {_qident(db_schema)}.scenario(is_base)
+      WHERE is_base = true;
+
+    CREATE INDEX IF NOT EXISTS scenario_parent_idx
+      ON {_qident(db_schema)}.scenario(parent_scenario_id);
+
+    CREATE TABLE IF NOT EXISTS {_qident(db_schema)}.scenario_override (
+      scenario_id BIGINT NOT NULL REFERENCES {_qident(db_schema)}.scenario(scenario_id) ON DELETE CASCADE,
+      table_name TEXT NOT NULL,
+      pk JSONB NOT NULL,
+      row JSONB NULL,
+      is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_by TEXT NULL,
+      PRIMARY KEY (scenario_id, table_name, pk)
+    );
+
+    CREATE INDEX IF NOT EXISTS scenario_override_table_scn_idx
+      ON {_qident(db_schema)}.scenario_override(table_name, scenario_id);
+
+    CREATE INDEX IF NOT EXISTS scenario_override_scn_idx
+      ON {_qident(db_schema)}.scenario_override(scenario_id);
+    """
+    with ENGINE.begin() as conn:
+        for stmt in ddl.split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(text(s + ";"))
+
+def _get_base_scenario_id(db_schema: str) -> int:
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_scenario_tables(db_schema)
+    sql = text(f'SELECT scenario_id FROM {_qident(db_schema)}.scenario WHERE is_base = true LIMIT 1;')
+    with ENGINE.begin() as conn:
+        sid = conn.execute(sql).scalar()
+    if not sid:
+        # Create Base if missing
+        ins = text(f"""
+          INSERT INTO {_qident(db_schema)}.scenario (name, is_base, parent_scenario_id)
+          VALUES ('Base', true, null)
+          RETURNING scenario_id;
+        """)
+        with ENGINE.begin() as conn:
+            sid = conn.execute(ins).scalar_one()
+    return int(sid)
+
+def _get_scenario_chain(db_schema: str, scenario_id: int) -> List[int]:
+    """
+    Returns [scenario_id, parent_id, ..., base_id] (no duplicates).
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_scenario_tables(db_schema)
+    base_id = _get_base_scenario_id(db_schema)
+
+    # If scenario_id is empty/0, treat as base
+    if not scenario_id:
+        return [base_id]
+
+    # Walk parents
+    chain: List[int] = []
+    seen = set()
+
+    cur = int(scenario_id)
+    while cur and cur not in seen:
+        seen.add(cur)
+        chain.append(cur)
+        sql = text(f"""
+          SELECT parent_scenario_id
+          FROM {_qident(db_schema)}.scenario
+          WHERE scenario_id = :sid;
+        """)
+        with ENGINE.begin() as conn:
+            parent = conn.execute(sql, {"sid": cur}).scalar()
+        if parent is None:
+            break
+        cur = int(parent)
+
+    if base_id not in chain:
+        chain.append(base_id)
+
+    return chain
+
+def _json_key(d: Dict[str, Any]) -> str:
+    """
+    Stable canonical string for dict keys, with support for date/datetime values.
+    """
+    def _norm(v):
+        if isinstance(v, (date, datetime)):
+            return v.isoformat()
+        if isinstance(v, dict):
+            return {str(k): _norm(val) for k, val in v.items()}
+        if isinstance(v, list):
+            return [_norm(x) for x in v]
+        if isinstance(v, tuple):
+            return [_norm(x) for x in v]
+        return v
+
+    return json.dumps(_norm(d or {}), sort_keys=True, ensure_ascii=False)
+# def _json_key(d: Dict[str, Any]) -> str:
+#     # stable canonical string for dict keys
+#     return json.dumps(d or {}, sort_keys=True, ensure_ascii=False)
+
+def _read_overrides_for_chain(db_schema: str, table_name: str, chain: List[int]) -> Dict[str, Dict[str, Any]]:
+    """
+    Returns dict: pk_key -> override row (first hit in chain order wins).
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    if not chain:
+        return {}
+
+    qual = _qualified(db_schema, SCENARIO_OVERRIDE_TABLE)
+
+    # chain order is scenario -> parent -> ... -> base
+    # We'll query all and then pick first by chain order.
+    sql = text(f"""
+      SELECT scenario_id, table_name, pk, row, is_deleted, updated_at, updated_by
+      FROM {qual}
+      WHERE table_name = :tname
+        AND scenario_id = ANY(:chain);
+    """)
+
+    with ENGINE.begin() as conn:
+        rows = conn.execute(sql, {"tname": table_name, "chain": chain}).mappings().all()
+
+    # group by pk and choose winner by chain order
+    rank = {sid: i for i, sid in enumerate(chain)}
+    best: Dict[str, Dict[str, Any]] = {}
+    best_rank: Dict[str, int] = {}
+
+    for r in rows:
+        pk_dict = dict(r["pk"] or {})
+        k = _json_key(pk_dict)
+        rrank = rank.get(int(r["scenario_id"]), 10**9)
+        if (k not in best_rank) or (rrank < best_rank[k]):
+            best_rank[k] = rrank
+            best[k] = dict(r)
+
+    return best
+
+def _scenario_read_table(
+    db_schema: str,
+    table_name: str,
+    scenario_id: int,
+    pk_cols: List[str],
+    where_sql: str = "1=1",
+    where_params: Optional[Dict[str, Any]] = None,
+    order_by_sql: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Scenario-aware table read:
+    - Reads base rows from schema.table_name filtered by where_sql
+    - Overlays overrides from scenario_override for scenario_id and its parent chain
+
+    pk_cols: columns that uniquely identify a row in the base table
+    where_sql: SQL string using alias 't'
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    # scenario -> parent -> ... -> base
+    chain = _get_scenario_chain(db_schema, int(scenario_id))
+    overrides = _read_overrides_for_chain(db_schema, table_name, chain)
+
+    base_qual = _qualified(db_schema, table_name)
+    params = dict(where_params or {})
+
+    sql = text(f"""
+      SELECT t.*
+      FROM {base_qual} t
+      WHERE {where_sql}
+      {("ORDER BY " + order_by_sql) if order_by_sql else ""};
+    """)
+
+    with ENGINE.begin() as conn:
+        base_rows = conn.execute(sql, params).mappings().all()
+
+    def pk_dict(row: Dict[str, Any]) -> Dict[str, Any]:
+        return {c: row.get(c) for c in pk_cols}
+
+    out_map: Dict[str, Dict[str, Any]] = {}
+
+    # 1) start with base rows
+    for r in base_rows:
+        d = dict(r)
+        out_map[_json_key(pk_dict(d))] = d
+
+    # 2) apply overrides (already “winner-resolved” by chain order)
+    for k, o in overrides.items():
+        if bool(o.get("is_deleted")):
+            out_map.pop(k, None)
+            continue
+
+        row_json = o.get("row") or {}
+        if isinstance(row_json, str):
+            try:
+                row_json = json.loads(row_json)
+            except Exception:
+                row_json = {}
+
+        if not isinstance(row_json, dict):
+            row_json = {}
+
+        if k in out_map:
+            merged = dict(out_map[k])
+            merged.update(row_json)
+            out_map[k] = merged
+        else:
+            out_map[k] = dict(row_json)
+
+    return list(out_map.values())
+
+def _scenario_weather_df(
+    db_schema: str,
+    scenario_id: int,
+    table_name: str,
+) -> pd.DataFrame:
+    """
+    Return scenario-aware weather rows as a DataFrame.
+    PK for weather_daily = (LocationID, Date)
+    """
+    rows = _scenario_read_table(
+        db_schema=db_schema,
+        table_name=table_name,
+        scenario_id=scenario_id,
+        pk_cols=["LocationID", "Date"],
+        where_sql="1=1",
+        where_params={},
+        order_by_sql='"LocationID", "Date"',
+    )
+    return pd.DataFrame(rows)
+
+
+def _scenario_promotions_df(
+    db_schema: str,
+    scenario_id: int,
+    table_name: str,
+) -> pd.DataFrame:
+    """
+    Return scenario-aware promotions rows as a DataFrame.
+    PK for promotions = (PromoID)
+    """
+    rows = _scenario_read_table(
+        db_schema=db_schema,
+        table_name=table_name,
+        scenario_id=scenario_id,
+        pk_cols=["PromoID"],
+        where_sql="1=1",
+        where_params={},
+        order_by_sql='"StartDate", "PromoID"',
+    )
+    return pd.DataFrame(rows)
+
+def _scenario_cleansed_history_df(
+    db_schema: str,
+    scenario_id: int,
+    period: str,
+    level: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Read scenario-specific cleansed history from history_cleansed.
+    Falls back only at caller level; this function only reads scenario rows.
+    """
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_cleansed_history_table(db_schema)
+
+    table_qual = _qualified(db_schema, CLEANSED_HISTORY_TABLE)
+    sid = int(scenario_id or 0)
+
+    where = ['"scenario_id" = :scenario_id', '"Period" = :period']
+    params: Dict[str, Any] = {
+        "scenario_id": sid,
+        "period": str(period).strip(),
+    }
+
+    if level is not None and str(level).strip():
+        where.append('"Level" = :level')
+        params["level"] = str(level).strip()
+
+    where_sql = " AND ".join(where)
+
+    sql = text(f"""
+        SELECT
+            "ProductID",
+            "ChannelID",
+            "LocationID",
+            "StartDate",
+            "EndDate",
+            "Period",
+            "Qty",
+            "NetPrice",
+            "ListPrice",
+            "Level"
+        FROM {table_qual}
+        WHERE {where_sql}
+        ORDER BY "ProductID", "ChannelID", "LocationID", "StartDate";
+    """)
+
+    df = pd.read_sql_query(sql, ENGINE, params=params)
+    return df
+
+def _get_history_with_fallback(
+    db_schema: str,
+    scenario_id: int,
+    level: str,
+    period: str,
+) -> pd.DataFrame:
+    """
+    Use scenario cleansed history if present for the selected scenario/period/level.
+    Otherwise fall back to base history_<level>_<period>.
+    """
+    # 1) Try scenario cleansed history
+    try:
+        hist_df = _scenario_cleansed_history_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            period=period,
+            level=level,
+        )
+
+        if hist_df is not None and not hist_df.empty:
+            return _normalize_required_history_cols(hist_df, period)
+    except Exception:
+        pass
+
+    # 2) Fallback to base history table
+    hist_table = _history_table_name(level, period)
+    return _normalize_required_history_cols(
+        _read_table_df(db_schema, hist_table),
+        period
+    )
+
+
 
 # ------------------------------------------------------------
 # QUERY LANGUAGE (AND/OR + parentheses)
@@ -571,6 +1067,459 @@ def health():
             "history_view": HISTORY_VIEW,
         },
         "forecast_jobs": [{"level": j[0], "period": j[1], "horizon": j[2]} for j in forecast.JOBS],
+    }
+
+@app.get("/api/scenarios")
+def api_scenarios(db_schema: str = Query(DEFAULT_SCHEMA)):
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_scenario_tables(db_schema)
+    qual = _qualified(db_schema, SCENARIO_TABLE)
+
+    sql = text(f"""
+      SELECT scenario_id, name, parent_scenario_id, is_base,
+             created_at, created_by, status
+      FROM {qual}
+      WHERE status = 'active'
+      ORDER BY is_base DESC, created_at DESC, scenario_id DESC;
+    """)
+
+    try:
+        with ENGINE.begin() as conn:
+            rows = conn.execute(sql).mappings().all()
+
+        cleaned = []
+        for row in rows:
+            item = dict(row)
+
+            for k, v in item.items():
+                # numpy scalar -> python scalar
+                if isinstance(v, np.generic):
+                    v = v.item()
+
+                # datetime/date -> string
+                if isinstance(v, (datetime, date)):
+                    v = v.isoformat(sep=" ")
+
+                # NaN / inf -> None
+                if isinstance(v, float):
+                    if math.isnan(v) or math.isinf(v):
+                        v = None
+
+                item[k] = v
+
+            # keep ids as int when present
+            if item.get("scenario_id") is not None:
+                item["scenario_id"] = int(item["scenario_id"])
+
+            if item.get("parent_scenario_id") is not None:
+                item["parent_scenario_id"] = int(item["parent_scenario_id"])
+
+            cleaned.append(item)
+
+        return cleaned
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"/api/scenarios failed: {e}")
+
+
+@app.post("/api/scenarios/{scenario_id}/copy")
+def api_copy_scenario(
+    scenario_id: int,
+    body: ScenarioCopyIn,
+    db_schema: str = Query(DEFAULT_SCHEMA),
+):
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_scenario_tables(db_schema)
+    name = (body.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    qual = _qualified(db_schema, SCENARIO_TABLE)
+
+    chk = text(f"SELECT 1 FROM {qual} WHERE scenario_id = :sid;")
+    with ENGINE.begin() as conn:
+        ok = conn.execute(chk, {"sid": int(scenario_id)}).scalar()
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"scenario_id {scenario_id} not found")
+
+    sql = text(f"""
+      INSERT INTO {qual} (name, parent_scenario_id, is_base, created_by)
+      VALUES (:name, :parent, false, :created_by)
+      RETURNING scenario_id, name, parent_scenario_id, is_base, created_at::text AS created_at, created_by, status;
+    """)
+    try:
+        with ENGINE.begin() as conn:
+            row = conn.execute(sql, {
+                "name": name,
+                "parent": int(scenario_id),
+                "created_by": body.created_by
+            }).mappings().first()
+
+        item = dict(row)
+
+        for k, v in item.items():
+            if isinstance(v, np.generic):
+                v = v.item()
+
+            if isinstance(v, (datetime, date)):
+                v = v.isoformat(sep=" ")
+
+            if isinstance(v, float):
+                if math.isnan(v) or math.isinf(v):
+                    v = None
+
+            item[k] = v
+
+        if item.get("scenario_id") is not None:
+            item["scenario_id"] = int(item["scenario_id"])
+
+        if item.get("parent_scenario_id") is not None:
+            item["parent_scenario_id"] = int(item["parent_scenario_id"])
+
+        return item
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"/api/scenarios/{scenario_id}/copy failed: {e}")
+
+
+@app.post("/api/scenarios/{scenario_id}/override")
+def api_upsert_override(
+    scenario_id: int,
+    body: OverrideUpsertIn,
+    db_schema: str = Query(DEFAULT_SCHEMA),
+):
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    _ensure_scenario_tables(db_schema)
+
+    tname = (body.table_name or "").strip()
+    if not tname:
+        raise HTTPException(status_code=400, detail="table_name is required")
+    if not isinstance(body.pk, dict) or not body.pk:
+        raise HTTPException(status_code=400, detail="pk must be a non-empty object")
+
+    # store as jsonb
+    pk_json = json.dumps(body.pk, sort_keys=True, ensure_ascii=False)
+    row_json = None if body.row is None else json.dumps(body.row, sort_keys=True, ensure_ascii=False)
+
+    qual = _qualified(db_schema, SCENARIO_OVERRIDE_TABLE)
+
+    sql = text(f"""
+      INSERT INTO {qual} (scenario_id, table_name, pk, row, is_deleted, updated_at, updated_by)
+      VALUES (:scenario_id, :table_name, CAST(:pk AS jsonb), CAST(:row AS jsonb), :is_deleted, now(), :updated_by)
+      ON CONFLICT (scenario_id, table_name, pk)
+      DO UPDATE SET
+        row = EXCLUDED.row,
+        is_deleted = EXCLUDED.is_deleted,
+        updated_at = now(),
+        updated_by = EXCLUDED.updated_by;
+    """)
+
+    try:
+        with ENGINE.begin() as conn:
+            conn.execute(sql, {
+                "scenario_id": int(scenario_id),
+                "table_name": tname,
+                "pk": pk_json,
+                "row": row_json,
+                "is_deleted": bool(body.is_deleted),
+                "updated_by": body.updated_by
+            })
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"/api/scenarios/{scenario_id}/override failed: {e}")
+
+# -------------------------
+# WEATHER (scenario-aware) API
+# -------------------------
+@app.get("/api/weather_daily")
+def api_weather_daily(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    scenario_id: int = Query(0, description="Scenario id; 0 = base"),
+    locationid: str = Query("", description="optional"),
+    date_from: str = Query(..., description="YYYY-MM-DD"),
+    date_to: str = Query(..., description="YYYY-MM-DD"),
+):
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    table_name = DEFAULT_WEATHER_TABLE  # "weather_daily"
+    base_qual = _qualified(db_schema, table_name)
+
+    # 1) Read base rows
+    where = ["w.\"Date\"::date >= CAST(:date_from AS date)", "w.\"Date\"::date <= CAST(:date_to AS date)"]
+    params: Dict[str, Any] = {"date_from": date_from, "date_to": date_to}
+
+    if (locationid or "").strip():
+        where.append("w.\"LocationID\" = :locationid")
+        params["locationid"] = locationid.strip()
+
+    where_sql = " AND ".join(where)
+
+    sql = text(f"""
+      SELECT
+        w."LocationID",
+        w."Date"::date AS "Date",
+        w."TavgC",
+        w."TminC",
+        w."TmaxC",
+        w."PrecipMM",
+        w."WindMaxMS",
+        w."SunHours"
+      FROM {base_qual} w
+      WHERE {where_sql}
+      ORDER BY w."LocationID", w."Date";
+    """)
+
+    with ENGINE.begin() as conn:
+        base_rows = conn.execute(sql, params).mappings().all()
+
+    rows = [dict(r) for r in base_rows]
+
+    # 2) Apply scenario overrides (scenario -> parent -> ... -> base)
+    chain = _get_scenario_chain(db_schema, int(scenario_id))
+    ov = _read_overrides_for_chain(db_schema, table_name, chain)
+
+    def pk_key(loc: str, d: str) -> str:
+        return _json_key({"LocationID": loc, "Date": str(d)})
+
+    out: Dict[str, Dict[str, Any]] = {pk_key(r["LocationID"], r["Date"]): r for r in rows}
+
+    for _, o in ov.items():
+        pk = dict(o.get("pk") or {})
+        loc = pk.get("LocationID")
+        d = pk.get("Date")
+        if not loc or not d:
+            continue
+
+        k = pk_key(loc, d)
+
+        # delete beats base
+        if bool(o.get("is_deleted")):
+            if k in out:
+                del out[k]
+            continue
+
+        # upsert row override
+        rj = dict(o.get("row") or {})
+        if not rj:
+            continue
+
+        # optional filtering: only keep if it matches query filters
+        if (locationid or "").strip() and str(rj.get("LocationID", "")).strip() != locationid.strip():
+            continue
+
+        # date range filter
+        # (string compare works for YYYY-MM-DD but we keep it safe via date casts)
+        # We'll just rely on the base range; if override is in range, include it:
+        # simplest: include and let frontend filter; but better: filter here using SQL dates
+        # We'll do a lightweight check:
+        ds = str(rj.get("Date", "")).strip()
+        if ds < date_from or ds > date_to:
+            continue
+
+        out[k] = {
+            "LocationID": str(rj.get("LocationID", loc)),
+            "Date": ds,
+            "TavgC": rj.get("TavgC"),
+            "TminC": rj.get("TminC"),
+            "TmaxC": rj.get("TmaxC"),
+            "PrecipMM": rj.get("PrecipMM"),
+            "WindMaxMS": rj.get("WindMaxMS"),
+            "SunHours": rj.get("SunHours"),
+        }
+
+    base_id = _get_base_scenario_id(db_schema)
+    sid = int(scenario_id or 0)
+    chain = _get_scenario_chain(db_schema, sid)
+    final_rows = list(out.values())
+    final_rows.sort(key=lambda r: (str(r.get("LocationID","")), str(r.get("Date",""))))
+    return {"scenario_id": (sid or base_id), "count": len(final_rows), "rows": final_rows}
+
+
+@app.get("/api/promotions")
+def api_promotions(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    scenario_id: int = Query(0, description="Scenario id; 0 = base"),
+    productid: str = Query("", description="optional"),
+    channelid: str = Query("", description="optional"),
+    locationid: str = Query("", description="optional"),
+    date_from: str = Query(..., description="YYYY-MM-DD"),
+    date_to: str = Query(..., description="YYYY-MM-DD"),
+):
+    global ENGINE
+    if ENGINE is None:
+        ENGINE = get_engine()
+
+    table_name = DEFAULT_PROMO_TABLE  # "promotions"
+    base_qual = _qualified(db_schema, table_name)
+
+    DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    date_from = (date_from or "").strip()
+    date_to   = (date_to or "").strip()
+
+    if not DATE_RE.match(date_from) or not DATE_RE.match(date_to):
+        raise HTTPException(status_code=400, detail="date_from/date_to must be YYYY-MM-DD")
+
+    # Parse to real dates (so override filters are correct)
+    try:
+        df = date.fromisoformat(date_from)
+        dt = date.fromisoformat(date_to)
+    except Exception:
+        raise HTTPException(status_code=400, detail="date_from/date_to must be valid ISO dates YYYY-MM-DD")
+
+    if df > dt:
+        raise HTTPException(status_code=400, detail="date_from must be <= date_to")
+
+    # 1) Read base rows that overlap the window
+    where = [
+        'p."StartDate" <= CAST(:date_to AS date)',
+        'p."EndDate"   >= CAST(:date_from AS date)',
+    ]
+    params: Dict[str, Any] = {"date_from": date_from, "date_to": date_to}
+
+    productid = (productid or "").strip()
+    channelid = (channelid or "").strip()
+    locationid = (locationid or "").strip()
+
+    if productid:
+        where.append('p."ProductID" = :productid')
+        params["productid"] = productid
+    if channelid:
+        where.append('p."ChannelID" = :channelid')
+        params["channelid"] = channelid
+    if locationid:
+        where.append('p."LocationID" = :locationid')
+        params["locationid"] = locationid
+
+    where_sql = " AND ".join(where)
+
+    sql = text(f"""
+      SELECT
+        p."PromoID",
+        p."PromoName",
+        p."StartDate"::date AS "StartDate",
+        p."EndDate"::date   AS "EndDate",
+        p."ProductID",
+        p."ChannelID",
+        p."LocationID",
+        p."PromoLevel",
+        p."DiscountPct",
+        p."UpliftPct",
+        p."Notes"
+      FROM {base_qual} p
+      WHERE {where_sql}
+      ORDER BY p."StartDate", p."PromoID";
+    """)
+
+    with ENGINE.begin() as conn:
+        base_rows = conn.execute(sql, params).mappings().all()
+
+    # Normalize base to strings for API output consistency
+    base_out = []
+    for r in base_rows:
+        rr = dict(r)
+        rr["StartDate"] = rr["StartDate"].isoformat() if rr.get("StartDate") else None
+        rr["EndDate"]   = rr["EndDate"].isoformat() if rr.get("EndDate") else None
+        base_out.append(rr)
+
+    # 2) Apply scenario overrides (scenario -> parent -> ... -> base)
+    chain = _get_scenario_chain(db_schema, int(scenario_id))
+    ov = _read_overrides_for_chain(db_schema, table_name, chain)
+
+    def pk_key(promoid: str) -> str:
+        return _json_key({"PromoID": str(promoid)})
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for r in base_out:
+        pid = str(r.get("PromoID", "")).strip()
+        if pid:
+            out[pk_key(pid)] = r
+
+    def _parse_date(s: str) -> Optional[date]:
+        s = (s or "").strip()
+        if not DATE_RE.match(s):
+            return None
+        try:
+            return date.fromisoformat(s)
+        except Exception:
+            return None
+
+    for _, o in ov.items():
+        pk = dict(o.get("pk") or {})
+        promoid = str(pk.get("PromoID", "")).strip()
+        if not promoid:
+            continue
+
+        # key for deletes (pk-based)
+        k_pk = pk_key(promoid)
+
+        # delete beats everything
+        if bool(o.get("is_deleted")):
+            out.pop(k_pk, None)
+            continue
+
+        rj = dict(o.get("row") or {})
+        if not rj:
+            continue
+
+        # final PromoID (row may override pk)
+        rj_promoid = str(rj.get("PromoID") or promoid).strip()
+        if not rj_promoid:
+            continue
+        k = pk_key(rj_promoid)
+
+        # optional P/C/L filters
+        if productid and str(rj.get("ProductID", "")).strip() != productid:
+            continue
+        if channelid and str(rj.get("ChannelID", "")).strip() != channelid:
+            continue
+        if locationid and str(rj.get("LocationID", "")).strip() != locationid:
+            continue
+
+        sd = _parse_date(str(rj.get("StartDate", "")))
+        ed = _parse_date(str(rj.get("EndDate", "")))
+        if not sd or not ed:
+            continue
+
+        # overlap window
+        if sd > dt or ed < df:
+            continue
+
+        out[k] = {
+            "PromoID": rj_promoid,
+            "PromoName": rj.get("PromoName"),
+            "StartDate": sd.isoformat(),
+            "EndDate": ed.isoformat(),
+            "ProductID": rj.get("ProductID"),
+            "ChannelID": rj.get("ChannelID"),
+            "LocationID": rj.get("LocationID"),
+            "PromoLevel": rj.get("PromoLevel"),
+            "DiscountPct": rj.get("DiscountPct"),
+            "UpliftPct": rj.get("UpliftPct"),
+            "Notes": rj.get("Notes"),
+        }
+
+    final_rows = list(out.values())
+    final_rows.sort(key=lambda r: (str(r.get("StartDate") or ""), str(r.get("PromoID") or "")))
+
+    base_id = _get_base_scenario_id(db_schema)
+    sid = int(scenario_id or 0)
+
+    return {
+        "scenario_id": sid or base_id,
+        "count": len(final_rows),
+        "rows": final_rows,
     }
 
 
@@ -1122,6 +2071,7 @@ def upsert_cleanse_profile(body: CleanseProfileIn, db_schema: str = Query(DEFAUL
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/cleanse/profiles save failed: {e}")
 
+
 @app.post("/api/history/ingest-cleansed")
 def api_ingest_cleansed_history(
     body: CleansedIngestRequest,
@@ -1138,22 +2088,24 @@ def api_ingest_cleansed_history(
     if not rows:
         return {"ok": True, "count": 0}
 
+    sid = int(getattr(body, "scenario_id", 0) or 0)
+
     table_qual = _qualified(db_schema, CLEANSED_HISTORY_TABLE)
 
     sql = text(f"""
         INSERT INTO {table_qual}
-            ("ProductID","ChannelID","LocationID","StartDate","EndDate","Period","Qty","NetPrice","ListPrice","Level")
+           ("scenario_id","ProductID","ChannelID","LocationID","StartDate","EndDate","Period","Qty","NetPrice","ListPrice","Level")
         VALUES
-            (:ProductID, :ChannelID, :LocationID,
-             CAST(:StartDate AS date), CAST(:EndDate AS date),
-             :Period, :Qty, :NetPrice, :ListPrice, :Level)
-        ON CONFLICT ("ProductID","ChannelID","LocationID","StartDate","Period")
-        DO UPDATE SET
-            "EndDate"    = EXCLUDED."EndDate",
-            "Qty"        = EXCLUDED."Qty",
-            "NetPrice"   = EXCLUDED."NetPrice",
-            "ListPrice"  = EXCLUDED."ListPrice",
-            "Level"      = EXCLUDED."Level";
+           (:scenario_id, :ProductID, :ChannelID, :LocationID,
+            CAST(:StartDate AS date), CAST(:EndDate AS date),
+            :Period, :Qty, :NetPrice, :ListPrice, :Level)
+       ON CONFLICT ("scenario_id","ProductID","ChannelID","LocationID","StartDate","Period")
+       DO UPDATE SET
+           "EndDate"    = EXCLUDED."EndDate",
+           "Qty"        = EXCLUDED."Qty",
+           "NetPrice"   = EXCLUDED."NetPrice",
+           "ListPrice"  = EXCLUDED."ListPrice",
+           "Level"      = EXCLUDED."Level";
     """)
 
     def _clean_date_str(x: object) -> Optional[str]:
@@ -1184,14 +2136,13 @@ def api_ingest_cleansed_history(
         end = _clean_date_str(r.get("EndDate"))
 
         if not start:
-            # StartDate is mandatory; skip bad rows
             continue
 
         if not end:
-            # fallback: use StartDate when EndDate missing
             end = start
 
         payload.append({
+            "scenario_id": sid,
             "ProductID": str(r.get("ProductID", "")).strip(),
             "ChannelID": str(r.get("ChannelID", "")).strip(),
             "LocationID": str(r.get("LocationID", "")).strip(),
@@ -1199,15 +2150,26 @@ def api_ingest_cleansed_history(
             "EndDate": end,
             "Period": period_ui,
             "Qty": float(r.get("Qty", 0) or 0),
-
-            # ✅ MUST EXIST for SQL bind params (can be None)
             "NetPrice": _float_or_none(r.get("NetPrice")),
             "ListPrice": _float_or_none(r.get("ListPrice")),
-
             "Level": (str(r.get("Level", "")).strip() or None),
         })
 
-    # ✅ this must be OUTSIDE the loop
+    deduped = {}
+    for p in payload:
+        k = (
+            p["scenario_id"],
+            p["ProductID"],
+            p["ChannelID"],
+            p["LocationID"],
+            p["StartDate"],
+            p["Period"],
+            
+        )
+        deduped[k] = p
+
+    payload = list(deduped.values())
+    
     if not payload:
         return {"ok": True, "count": 0}
 
@@ -1221,10 +2183,11 @@ def api_ingest_cleansed_history(
             for i in range(0, len(payload), chunk_size):
                 conn.execute(sql, payload[i:i + chunk_size])
 
-        return {"ok": True, "count": len(payload)}
+        return {"ok": True, "count": len(payload), "scenario_id": sid}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/history/ingest-cleansed failed: {e}")
+
 
   
 
@@ -1260,19 +2223,22 @@ def api_classify_compute(
     body: ClassifyComputeRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
 ):
-    # We keep this lightweight: mark a compute timestamp
     period = (body.period or "").strip().lower()
     if period not in ("daily", "weekly", "monthly"):
         raise HTTPException(status_code=400, detail="period must be one of: daily, weekly, monthly")
 
-    ts = datetime.now(timezone.utc).isoformat()
-    _LAST_CLASSIFY_COMPUTED[f"{db_schema}:{period}"] = ts
+    sid = int(getattr(body, "scenario_id", 1) or 1)
 
-    return {"ok": True, "period": period, "computed_at": ts}
+    ts = datetime.now(timezone.utc).isoformat()
+    _LAST_CLASSIFY_COMPUTED[f"{db_schema}:{sid}:{period}"] = ts
+
+    return {"ok": True, "period": period, "scenario_id": sid, "computed_at": ts}
+
 
 @app.get("/api/classify/results")
 def api_classify_results(
     period: str = Query(..., description="daily|weekly|monthly"),
+    scenario_id: int = Query(1, ge=1),
     include_inactive: bool = Query(True),
     db_schema: str = Query(DEFAULT_SCHEMA),
 ):
@@ -1284,31 +2250,33 @@ def api_classify_results(
     if p not in ("daily", "weekly", "monthly"):
         raise HTTPException(status_code=400, detail="period must be one of: daily, weekly, monthly")
 
-    # your history_cleansed stores Period as UI strings like 'Daily'/'Weekly'/'Monthly'
-    period_ui = _period_ui_from_slug(p)  # you already have this helper
+    period_ui = _period_ui_from_slug(p)
+    sid = int(scenario_id)
 
     table_qual = _qualified(db_schema, CLEANSED_HISTORY_TABLE)
 
-    # Distinct keys that exist in cleansed history for this period
     sql = text(f"""
       SELECT DISTINCT
         "ProductID"  AS "ProductID",
         "ChannelID"  AS "ChannelID",
         "LocationID" AS "LocationID"
       FROM {table_qual}
-      WHERE "Period" = :period_ui
+      WHERE "scenario_id" = :scenario_id
+        AND "Period" = :period_ui
       ORDER BY 1,2,3
       LIMIT 50000;
     """)
 
-    computed_at = _LAST_CLASSIFY_COMPUTED.get(f"{db_schema}:{p}") \
+    computed_at = _LAST_CLASSIFY_COMPUTED.get(f"{db_schema}:{sid}:{p}") \
                   or datetime.now(timezone.utc).isoformat()
 
     try:
         with ENGINE.begin() as conn:
-            keys = conn.execute(sql, {"period_ui": period_ui}).mappings().all()
+            keys = conn.execute(sql, {
+                "scenario_id": sid,
+                "period_ui": period_ui
+            }).mappings().all()
 
-        # return in the shape your Angular expects
         out = []
         for k in keys:
             out.append({
@@ -1320,6 +2288,7 @@ def api_classify_results(
                 "Score": 1.0,
                 "IsActive": True,
                 "ComputedAt": computed_at,
+                "scenario_id": sid,
             })
         return out
 
@@ -1340,22 +2309,24 @@ def api_classify_save(
     period = (body.period or "").strip().lower()
     if period not in ("daily", "weekly", "monthly"):
         raise HTTPException(status_code=400, detail="period must be one of: daily, weekly, monthly")
+
     period_ui = _period_ui_from_slug(period)
+    sid = int(getattr(body, "scenario_id", 1) or 1)
 
     rows = body.rows or []
     if not rows:
-        return {"ok": True, "count": 0}
+        return {"ok": True, "count": 0, "scenario_id": sid}
 
     qual = _qualified(db_schema, CLASSIFIED_FE_TABLE)
 
     sql = text(f"""
       INSERT INTO {qual}
-        ("ProductID","ChannelID","LocationID","Period","ADI","CV2","Category","Algorithm","CreatedAt","UpdatedAt")
+        ("scenario_id","ProductID","ChannelID","LocationID","Period","ADI","CV2","Category","Algorithm","CreatedAt","UpdatedAt")
       VALUES
-        (:ProductID,:ChannelID,:LocationID,:Period,:ADI,:CV2,:Category,:Algorithm,
+        (:scenario_id,:ProductID,:ChannelID,:LocationID,:Period,:ADI,:CV2,:Category,:Algorithm,
          COALESCE(CAST(:CreatedAt AS timestamptz), now()),
          now())
-      ON CONFLICT ("ProductID","ChannelID","LocationID","Period")
+      ON CONFLICT ("scenario_id","ProductID","ChannelID","LocationID","Period")
       DO UPDATE SET
         "ADI"       = EXCLUDED."ADI",
         "CV2"       = EXCLUDED."CV2",
@@ -1367,6 +2338,7 @@ def api_classify_save(
     payload: List[Dict[str, Any]] = []
     for r in rows:
         payload.append({
+            "scenario_id": sid,
             "ProductID": (r.ProductID or "").strip(),
             "ChannelID": (r.ChannelID or "").strip(),
             "LocationID": (r.LocationID or "").strip(),
@@ -1378,20 +2350,34 @@ def api_classify_save(
             "CreatedAt": (r.CreatedAt or None),
         })
 
+    # dedupe payload
+    deduped = {}
+    for p in payload:
+        k = (
+            p["scenario_id"],
+            p["ProductID"],
+            p["ChannelID"],
+            p["LocationID"],
+            p["Period"],
+        )
+        deduped[k] = p
+    payload = list(deduped.values())
+
     try:
         with ENGINE.begin() as conn:
             chunk = 5000
             for i in range(0, len(payload), chunk):
                 conn.execute(sql, payload[i:i+chunk])
-        return {"ok": True, "count": len(payload)}
+        return {"ok": True, "count": len(payload), "scenario_id": sid}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/classify/save failed: {e}")
-
+    
 @app.get("/api/classify/saved")
 def api_classify_saved(
     period: str = Query(..., description="daily|weekly|monthly"),
-    include_inactive: bool = Query(False, description="if false, only rows that are active in cleansed history"),
+    scenario_id: int = Query(1, ge=1),
+    include_inactive: bool = Query(False, description="if false, only rows that are active in scenario cleansed history"),
     limit: int = Query(20000, ge=1, le=50000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
@@ -1400,23 +2386,28 @@ def api_classify_saved(
     if ENGINE is None:
         ENGINE = get_engine()
 
+    _ensure_classified_fe_table(db_schema)
+    _ensure_cleansed_history_table(db_schema)
+
     p = (period or "").strip().lower()
     if p not in ("daily", "weekly", "monthly"):
         raise HTTPException(status_code=400, detail="period must be one of: daily, weekly, monthly")
 
-    period_ui = _period_ui_from_slug(p)  # 'Daily'/'Weekly'/'Monthly'
+    period_ui = _period_ui_from_slug(p)
+    sid = int(scenario_id)
 
     cls_qual = _qualified(db_schema, CLASSIFIED_FE_TABLE)
     hist_qual = _qualified(db_schema, CLEANSED_HISTORY_TABLE)
 
-    # Active keys = those currently present in history_cleansed for this period
     sql = text(f"""
       WITH active_keys AS (
         SELECT DISTINCT "ProductID","ChannelID","LocationID"
         FROM {hist_qual}
-        WHERE "Period" = :period_ui
+        WHERE "scenario_id" = :scenario_id
+          AND "Period" = :period_ui
       )
       SELECT
+        c."scenario_id",
         c."ProductID",
         c."ChannelID",
         c."LocationID",
@@ -1433,7 +2424,8 @@ def api_classify_saved(
         ON ak."ProductID" = c."ProductID"
        AND ak."ChannelID" = c."ChannelID"
        AND ak."LocationID" = c."LocationID"
-      WHERE c."Period" = :period_ui
+      WHERE c."scenario_id" = :scenario_id
+        AND c."Period" = :period_ui
         AND (:include_inactive = TRUE OR ak."ProductID" IS NOT NULL)
       ORDER BY c."UpdatedAt" DESC, c."ProductID", c."ChannelID", c."LocationID"
       LIMIT :limit OFFSET :offset;
@@ -1442,6 +2434,7 @@ def api_classify_saved(
     try:
         with ENGINE.begin() as conn:
             rows = conn.execute(sql, {
+                "scenario_id": sid,
                 "period_ui": period_ui,
                 "include_inactive": include_inactive,
                 "limit": limit,
@@ -1450,6 +2443,7 @@ def api_classify_saved(
         return [dict(r) for r in rows]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/classify/saved failed: {e}")
+
 
 
 # -------------------------
@@ -1464,6 +2458,7 @@ def api_forecast(
     period: str = Query(..., description="Daily/Weekly/Monthly"),
     model: Optional[str] = Query(None),
     method: Optional[str] = Query(None),
+    scenario_id: int = Query(1, ge=1),
     limit: int = Query(200, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
@@ -1479,12 +2474,14 @@ def api_forecast(
     cols_sql = ", ".join([f'f.{_qident(c)} AS {_qident(c)}' for c in FORECAST_COLS])
 
     where = [
-        f"f.{_qident('ProductID')} = :p",
-        f"f.{_qident('ChannelID')} = :c",
-        f"f.{_qident('LocationID')} = :l",
-        f"LOWER(TRIM(f.{_qident('Period')})) = LOWER(TRIM(:period))",
+        'f.scenario_id = :scenario_id',
+        f'f.{_qident("ProductID")} = :p',
+        f'f.{_qident("ChannelID")} = :c',
+        f'f.{_qident("LocationID")} = :l',
+        f'LOWER(TRIM(f.{_qident("Period")})) = LOWER(TRIM(:period))',
     ]
     params: Dict[str, object] = {
+        "scenario_id": int(scenario_id),
         "p": productid,
         "c": channelid,
         "l": locationid,
@@ -1494,11 +2491,11 @@ def api_forecast(
     }
 
     if model:
-        where.append(f"f.{_qident('Model')} = :model")
+        where.append(f'f.{_qident("Model")} = :model')
         params["model"] = model.strip()
 
     if method:
-        where.append(f"f.{_qident('Method')} = :method")
+        where.append(f'f.{_qident("Method")} = :method')
         params["method"] = method.strip()
 
     where_sql = " AND ".join(where)
@@ -1521,10 +2518,14 @@ def api_forecast(
         with ENGINE.begin() as conn:
             total = int(conn.execute(sql_count, params).scalar_one())
             rows = conn.execute(sql_rows, params).mappings().all()
-        return {"variant": v, "count": total, "rows": [dict(r) for r in rows]}
+        return {
+            "variant": v,
+            "scenario_id": int(scenario_id),
+            "count": total,
+            "rows": [dict(r) for r in rows]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/forecast failed: {e}")
-
 
 @app.get("/api/forecast/search")
 def api_forecast_search(
@@ -1537,6 +2538,7 @@ def api_forecast_search(
     method: Optional[str] = Query(None),
     limit: int = Query(200, ge=1, le=5000),
     offset: int = Query(0, ge=0),
+    scenario_id: int = Query(1, ge=1),
     db_schema: str = Query(DEFAULT_SCHEMA),
 ):
     global ENGINE
@@ -1553,22 +2555,29 @@ def api_forecast_search(
 
     t = (term or "").strip()
     if not t:
-        return {"variant": v, "field": f, "term": "", "count": 0, "rows": []}
+        return {"variant": v, "scenario_id": int(scenario_id), "field": f, "term": "", "count": 0, "rows": []}
 
     like = t.replace("*", "%")
     if "%" not in like:
         like = f"%{like}%"
 
-    where = [f'CAST(f.{_qident(f)} AS TEXT) ILIKE :like']
-    params: Dict[str, object] = {"like": like, "limit": limit, "offset": offset}
+    where = [
+        'f.scenario_id = :scenario_id',
+        f'CAST(f.{_qident(f)} AS TEXT) ILIKE :like'
+    ]
+    params: Dict[str, object] = {
+        "scenario_id": int(scenario_id),
+        "like": like,
+        "limit": limit,
+        "offset": offset
+    }
 
     if period:
         where.append(f'LOWER(TRIM(f.{_qident("Period")})) = LOWER(TRIM(:period))')
         params["period"] = period
 
-
     if level:
-        where.append(f'LOWER(TRIM(h.{_qident("Level")})) = LOWER(TRIM(:level))')
+        where.append(f'LOWER(TRIM(f.{_qident("Level")})) = LOWER(TRIM(:level))')
         params["level"] = str(level)
 
     if model:
@@ -1608,7 +2617,14 @@ def api_forecast_search(
         with ENGINE.begin() as conn:
             total = int(conn.execute(sql_count, params).scalar_one())
             rows = conn.execute(sql_rows, params).mappings().all()
-        return {"variant": v, "field": f, "term": t, "count": total, "rows": [dict(r) for r in rows]}
+        return {
+            "variant": v,
+            "scenario_id": int(scenario_id),
+            "field": f,
+            "term": t,
+            "count": total,
+            "rows": [dict(r) for r in rows]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/forecast/search failed: {e}")
 
@@ -1628,6 +2644,8 @@ def run_one_db(req: RunOneDBRequest):
             ENGINE = get_engine()
 
         schema = req.db_schema.strip()
+        print("DEBUG run_one_db scenario_id =", req.scenario_id)
+
         period = req.period.strip()        # must be "Daily"/"Weekly"/"Monthly"
         horizon = int(req.horizon)
 
@@ -1646,7 +2664,6 @@ def run_one_db(req: RunOneDBRequest):
                     detail="When using history_table, it must look like history_<level>_<daily|weekly|monthly> so we can infer level."
                 )
             level = m.group(1)
-
             tag = req.tag or hist_table
         else:
             if not req.level:
@@ -1655,9 +2672,32 @@ def run_one_db(req: RunOneDBRequest):
             hist_table = _history_table_name(level, period)
             tag = req.tag or f"{level}_{period}"
 
-        hist_df = _normalize_required_history_cols(_read_table_df(schema, hist_table), period)
-        weather_df = _normalize_weather_cols(_read_table_df(schema, req.weather_table.strip()))
-        promo_df = _normalize_promo_cols(_read_table_df(schema, req.promo_table.strip()))
+        # Scenario cleansed history first, otherwise base history fallback
+        hist_df = _get_history_with_fallback(
+            db_schema=schema,
+            scenario_id=req.scenario_id,
+            level=level,
+            period=period,
+        )
+        # hist_df = _normalize_required_history_cols(
+        #     _read_table_df(schema, hist_table),
+        #     period
+        # )
+
+        # Weather and promotions are scenario-aware
+        weather_df = _scenario_weather_df(
+            db_schema=schema,
+            scenario_id=req.scenario_id,
+            table_name=req.weather_table.strip(),
+        )
+        weather_df = _normalize_weather_cols(weather_df)
+
+        promo_df = _scenario_promotions_df(
+            db_schema=schema,
+            scenario_id=req.scenario_id,
+            table_name=req.promo_table.strip(),
+        )
+        promo_df = _normalize_promo_cols(promo_df)
 
         result = forecast.run_one_job_df(
             hist_df=hist_df,
@@ -1669,13 +2709,16 @@ def run_one_db(req: RunOneDBRequest):
             db_engine=ENGINE,
             db_schema=schema,
             level=level,
-            write_to_db=True,
-            return_frames=False,
+            scenario_id=req.scenario_id,
+            write_to_db=req.save_to_db,
+            return_frames=(not req.save_to_db),
         )
-
-        return {
+        
+        response = {
             "ok": True,
-            "message": f"Ran {schema}.{hist_table} -> wrote forecasts to forecast_{level}_{period.lower()} (+ _baseline)",
+            "scenario_id": req.scenario_id,
+            "message": f"Ran {schema}.{hist_table} -> wrote forecasts to forecast_{level}_{period.lower()} (+ _baseline)" if req.save_to_db
+               else f"Ran {schema}.{hist_table} -> forecast generated in memory",
             "tag": tag,
             "db_result": result.get("db", {}),
             "rows_baseline": result.get("rows_baseline"),
@@ -1683,7 +2726,23 @@ def run_one_db(req: RunOneDBRequest):
             "backtest_rows": result.get("backtest_rows"),
             "mean_wmape_base": result.get("mean_wmape_base"),
             "mean_wmape_feat": result.get("mean_wmape_feat"),
-        }
+            }
+
+        if not req.save_to_db:
+            feat_df = result.get("forecast_feat_df")
+            base_df = result.get("forecast_baseline_df")
+
+            if feat_df is not None:
+                response["forecast_feat_rows"] = feat_df.to_dict(orient="records")
+            else:
+                response["forecast_feat_rows"] = []
+
+            if base_df is not None:
+                response["forecast_baseline_rows"] = base_df.to_dict(orient="records")
+            else:
+                response["forecast_baseline_rows"] = []
+
+        return response    
 
     except HTTPException:
         raise
@@ -1703,8 +2762,20 @@ def run_all_db(req: RunAllDBRequest):
     promo_table = req.promo_table.strip()
 
     # shared exog (read once)
-    weather_df = _normalize_weather_cols(_read_table_df(schema, weather_table))
-    promo_df = _normalize_promo_cols(_read_table_df(schema, promo_table))
+    weather_df = _scenario_weather_df(
+        db_schema=schema,
+        scenario_id=req.scenario_id,
+        table_name=weather_table,
+    )
+    weather_df = _normalize_weather_cols(weather_df)
+
+    promo_df = _scenario_promotions_df(
+        db_schema=schema,
+        scenario_id=req.scenario_id,
+        table_name=promo_table,
+    )
+    promo_df = _normalize_promo_cols(promo_df)
+
 
     results = []
     for level, period, horizon in forecast.JOBS:
@@ -1712,7 +2783,12 @@ def run_all_db(req: RunAllDBRequest):
         tag = f"{level}_{period}"                         # purely for logging / return payload
 
         try:
-            hist_df = _normalize_required_history_cols(_read_table_df(schema, hist_table), period)
+            hist_df = _get_history_with_fallback(
+                db_schema=schema,
+                scenario_id=req.scenario_id,
+                level=level,
+                period=period,
+            )
 
             run_result = forecast.run_one_job_df(
                 hist_df=hist_df,
@@ -1721,6 +2797,7 @@ def run_all_db(req: RunAllDBRequest):
                 weather_daily=weather_df,
                 promos=promo_df,
                 tag=tag,
+                scenario_id=req.scenario_id,
 
                 # ✅ new args for DB-first forecast.py
                 db_engine=ENGINE,
@@ -1800,12 +2877,10 @@ def api_kpi_single(
     period: str = Query(..., description="Daily/Weekly/Monthly"),
     model: Optional[str] = Query(None),
     method: Optional[str] = Query(None),
+    scenario_id: int = Query(1, ge=1),
     limit: int = Query(5000, ge=1, le=50000),
     db_schema: str = Query(DEFAULT_SCHEMA),
 ):
-    """
-    Join v_history with v_forecast_* on keys+StartDate+Period and compute KPIs.
-    """
     global ENGINE
     if ENGINE is None:
         ENGINE = get_engine()
@@ -1817,18 +2892,21 @@ def api_kpi_single(
     fc_qual = _qualified(db_schema, view_name)
 
     where_fc = [
+        'f.scenario_id = :scenario_id',
         'f."ProductID" = :p',
         'f."ChannelID" = :c',
         'f."LocationID" = :l',
         'f."Period" = :period',
     ]
     params: Dict[str, object] = {
+        "scenario_id": int(scenario_id),
         "p": productid,
         "c": channelid,
         "l": locationid,
         "period": period,
         "limit": limit,
     }
+
     if model:
         where_fc.append('f."Model" = :model')
         params["model"] = model.strip()
@@ -1893,9 +2971,9 @@ def api_kpi_single(
         with ENGINE.begin() as conn:
             row = conn.execute(sql, params).mappings().first()
         if not row:
-            return {"n": 0, "metrics": None}
+            return {"scenario_id": int(scenario_id), "n": 0, "metrics": None}
         out = dict(row)
-        return {"n": out.pop("n", 0), "metrics": out}
+        return {"scenario_id": int(scenario_id), "n": out.pop("n", 0), "metrics": out}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/kpi/single failed: {e}")
 
@@ -1909,6 +2987,7 @@ def api_kpi_by_query(
     method: Optional[str] = Query(None),
     limit_keys: int = Query(200, ge=1, le=5000),
     limit_fc_per_key: int = Query(5000, ge=10, le=50000),
+    scenario_id: int = Query(1),
     db_schema: str = Query(DEFAULT_SCHEMA),
 ):
     """
@@ -1948,7 +3027,8 @@ def api_kpi_by_query(
             keys = conn.execute(keys_sql, params_keys).mappings().all()
         keys = [dict(k) for k in keys]
         if not keys:
-            return {"q": q, "keys": 0, "n": 0, "metrics": None}
+            return {"q": q, "scenario_id": int(scenario_id), "keys": 0, "n": 0, "metrics": None}
+ 
 
         # Compute KPI by summing across keys (loop -> single SQL per key, safe & easy)
         # If you want extreme performance later, we can do one big VALUES join like history-by-keys.
@@ -1974,9 +3054,11 @@ def api_kpi_by_query(
                 period=period,
                 model=model,
                 method=method,
+                scenario_id=scenario_id,
                 limit=limit_fc_per_key,
                 db_schema=db_schema,
             )
+
             m = res.get("metrics")
             n = res.get("n", 0)
             if not m or n <= 0:
@@ -2000,6 +3082,7 @@ def api_kpi_by_query(
 
         return {
             "q": q,
+            "scenario_id": int(scenario_id),
             "keys": len(keys),
             "n": agg["pairs"],
             "metrics": {

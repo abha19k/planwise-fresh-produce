@@ -4,10 +4,19 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
-  CardComponent, CardHeaderComponent, CardBodyComponent, CardFooterComponent,
-  RowComponent, ColComponent, ButtonDirective, TextColorDirective, TableDirective
+  CardComponent,
+  CardHeaderComponent,
+  CardBodyComponent,
+  CardFooterComponent,
+  RowComponent,
+  ColComponent,
+  ButtonDirective,
+  TextColorDirective,
+  TableDirective
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
+
+import { ScenarioService } from '../../../services/scenario.service';
 
 type PeriodView = 'Daily' | 'Weekly' | 'Monthly';
 type PeriodSlug = 'daily' | 'weekly' | 'monthly';
@@ -22,7 +31,8 @@ interface RowVM {
   category: string;
   algorithm: string;
   isActive?: boolean;
-  created_at?: string; // ISO timestamp
+  created_at?: string;
+  scenario_id?: number;
 }
 
 @Component({
@@ -31,17 +41,29 @@ interface RowVM {
   templateUrl: './classified-forecast-elements.component.html',
   styleUrls: ['./classified-forecast-elements.component.scss'],
   imports: [
-    CommonModule, ReactiveFormsModule, HttpClientModule,
-    TextColorDirective, TableDirective,
-    CardComponent, CardHeaderComponent, CardBodyComponent, CardFooterComponent,
-    RowComponent, ColComponent, ButtonDirective, IconDirective
+    CommonModule,
+    ReactiveFormsModule,
+    HttpClientModule,
+    TextColorDirective,
+    TableDirective,
+    CardComponent,
+    CardHeaderComponent,
+    CardBodyComponent,
+    CardFooterComponent,
+    RowComponent,
+    ColComponent,
+    ButtonDirective,
+    IconDirective
   ]
 })
 export class ClassifiedForecastElementsComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
 
+  readonly scenarioService = inject(ScenarioService);
+
   readonly API = 'http://127.0.0.1:8000/api';
+  readonly DB_SCHEMA = 'planwise_fresh_produce';
 
   period = new FormControl<PeriodView>('Daily', { nonNullable: true });
   includeInactive = new FormControl<boolean>(false, { nonNullable: true });
@@ -50,7 +72,6 @@ export class ClassifiedForecastElementsComponent implements OnInit {
   loading = false;
   errorMsg: string | null = null;
 
-  // sorting
   sortColumn: keyof RowVM | '' = '';
   sortAsc = true;
 
@@ -61,14 +82,24 @@ export class ClassifiedForecastElementsComponent implements OnInit {
     this.includeInactive.valueChanges.subscribe(() => this.loadRows());
   }
 
+  get currentScenarioId(): number {
+    return this.scenarioService.selectedScenarioId();
+  }
+
   private slug(): PeriodSlug {
     const p = this.period.value;
     return p === 'Weekly' ? 'weekly' : p === 'Monthly' ? 'monthly' : 'daily';
   }
 
+  private baseParams(): HttpParams {
+    return new HttpParams()
+      .set('db_schema', this.DB_SCHEMA)
+      .set('scenario_id', this.currentScenarioId);
+  }
+
   private toVM(r: any): RowVM {
     const slug = this.slug();
-    const Period: PeriodView =
+    const periodView: PeriodView =
       (r.Period as PeriodView) ??
       (slug === 'weekly' ? 'Weekly' : slug === 'monthly' ? 'Monthly' : 'Daily');
 
@@ -76,7 +107,7 @@ export class ClassifiedForecastElementsComponent implements OnInit {
       ProductID: String(r.ProductID ?? ''),
       ChannelID: String(r.ChannelID ?? ''),
       LocationID: String(r.LocationID ?? ''),
-      Period,
+      Period: periodView,
       adi: r.ADI ?? r.adi ?? null,
       cv2: r.CV2 ?? r.cv2 ?? null,
       category: String(r.Category ?? r.category ?? ''),
@@ -88,15 +119,16 @@ export class ClassifiedForecastElementsComponent implements OnInit {
         r.created_at ??
         r.updated_at ??
         undefined,
+      scenario_id: r.scenario_id ?? undefined
     };
   }
 
-  loadRows() {
+  loadRows(): void {
     this.loading = true;
     this.errorMsg = null;
     this.rows = [];
 
-    const params = new HttpParams()
+    const params = this.baseParams()
       .set('period', this.slug())
       .set('include_inactive', String(this.includeInactive.value))
       .set('limit', '20000')
@@ -106,27 +138,30 @@ export class ClassifiedForecastElementsComponent implements OnInit {
       next: res => {
         this.rows = (res || []).map(x => this.toVM(x));
 
-        // default sort by created_at desc if present, else ProductID asc
         if (this.rows.some(r => !!r.created_at)) {
           this.sortColumn = 'created_at';
           this.sortAsc = false;
-          this.sortBy('created_at');
+          this.sortRows('created_at', false);
         } else {
           this.sortColumn = 'ProductID';
           this.sortAsc = true;
-          this.sortBy('ProductID');
+          this.sortRows('ProductID', true);
         }
       },
       error: e => {
         this.errorMsg = e?.error?.detail || e?.message || 'Failed to load saved classified results.';
       },
-      complete: () => (this.loading = false)
+      complete: () => {
+        this.loading = false;
+      }
     });
   }
 
-  refresh() { this.loadRows(); }
+  refresh(): void {
+    this.loadRows();
+  }
 
-  sortBy(col: keyof RowVM) {
+  sortBy(col: keyof RowVM): void {
     if (this.sortColumn === col) {
       this.sortAsc = !this.sortAsc;
     } else {
@@ -134,22 +169,25 @@ export class ClassifiedForecastElementsComponent implements OnInit {
       this.sortAsc = true;
     }
 
-    const dir = this.sortAsc ? 1 : -1;
+    this.sortRows(col, this.sortAsc);
+  }
+
+  private sortRows(col: keyof RowVM, asc: boolean): void {
+    const dir = asc ? 1 : -1;
 
     this.rows.sort((a, b) => {
-      const av = (a as any)[col];
-      const bv = (b as any)[col];
+      const av = a[col];
+      const bv = b[col];
 
       if (col === 'adi' || col === 'cv2') {
-        // Put nulls last (or first depending on direction)
         const na = av == null ? Number.POSITIVE_INFINITY : Number(av);
         const nb = bv == null ? Number.POSITIVE_INFINITY : Number(bv);
         return (na - nb) * dir;
       }
 
       if (col === 'created_at') {
-        const da = av ? new Date(av).getTime() : 0;
-        const db = bv ? new Date(bv).getTime() : 0;
+        const da = av ? new Date(String(av)).getTime() : 0;
+        const db = bv ? new Date(String(bv)).getTime() : 0;
         return (da - db) * dir;
       }
 
@@ -157,10 +195,11 @@ export class ClassifiedForecastElementsComponent implements OnInit {
     });
   }
 
-  exportCSV() {
+  exportCSV(): void {
     if (!this.rows.length) return;
 
     const header = [
+      'ScenarioID',
       'ProductID',
       'ChannelID',
       'LocationID',
@@ -175,6 +214,7 @@ export class ClassifiedForecastElementsComponent implements OnInit {
 
     const lines = this.rows.map(r =>
       [
+        r.scenario_id ?? this.currentScenarioId,
         r.ProductID,
         r.ChannelID,
         r.LocationID,
@@ -197,7 +237,10 @@ export class ClassifiedForecastElementsComponent implements OnInit {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Classified_Results_${this.period.value}${this.includeInactive.value ? '_with_inactive' : ''}.csv`;
+    a.download =
+      `Classified_Results_s${this.currentScenarioId}_${this.period.value}` +
+      `${this.includeInactive.value ? '_with_inactive' : ''}.csv`;
+
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -205,10 +248,11 @@ export class ClassifiedForecastElementsComponent implements OnInit {
     URL.revokeObjectURL(url);
   }
 
-  runInPlanning() {
-    // Adjust route if your actual path differs
+  runInPlanning(): void {
     this.router.navigate(['/planning-run/classify-forecast-elements'], {
-      queryParams: { period: this.period.value }
+      queryParams: {
+        period: this.period.value
+      }
     });
   }
 }

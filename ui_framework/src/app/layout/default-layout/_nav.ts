@@ -54,6 +54,11 @@ export const navItems: INavData[] = [
         name: 'KPI',
         url: '/data/kpi',
         icon: 'nav-icon-bullet'
+      },
+      {
+        name: 'Promotions',
+        url: '/data/promotions',
+        icon: 'nav-icon-bullet'
       }
       // {
       //   name: 'Weather Correlation',
@@ -77,6 +82,11 @@ export const navItems: INavData[] = [
     url: '/process',
     iconComponent: { name: 'cil-speedometer' },
     children: [
+      {
+        name: 'Scenario Manager',
+        url: '/process/scenario-manager',
+        icon: 'nav-icon-bullet'
+      },
       {
         name: 'Consensus Forecasting',
         url: '/process/consensus-forecasting',

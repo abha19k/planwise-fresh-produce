@@ -9,12 +9,21 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'forecast-tuning',
+        redirectTo: 'scenario-manager',
         pathMatch: 'full'
       },
       {
+        path: 'scenario-manager',
+        loadComponent: () =>
+          import('./scenario-manager/scenario-manager.component').then(m => m.ScenarioManagerComponent),
+        data: {
+          title: 'Scenario Manager'
+        }
+      },
+      {
         path: 'forecast-tuning',
-        loadComponent: () => import('./forecast-tuning/forecast-tuning.component').then(m => m.ForecastTuningComponent),
+        loadComponent: () =>
+          import('./forecast-tuning/forecast-tuning.component').then(m => m.ForecastTuningComponent),
         data: {
           title: 'Forecast Tuning'
         }

@@ -1,0 +1,106 @@
+<c-row class="mb-3">
+    <c-col>
+      <c-card>
+        <c-card-header>Scenario Manager</c-card-header>
+        <c-card-body>
+          <c-row class="g-3 align-items-end">
+            <c-col md="4">
+              <label class="form-label">Active Scenario</label>
+              <select
+                class="form-select"
+                [ngModel]="scenarioService.selectedScenarioId()"
+                (ngModelChange)="selectScenario($event)"
+              >
+                <option *ngFor="let s of scenarios" [ngValue]="s.scenario_id">
+                  {{ s.name }}{{ s.is_base && s.name !== 'Base' ? ' (Base)' : '' }}
+                </option>
+              </select>
+            </c-col>
+  
+            <c-col md="5">
+              <label class="form-label">New Scenario Name</label>
+              <input
+                class="form-control"
+                [(ngModel)]="newScenarioName"
+                placeholder="e.g. WhatIf-Promo-April"
+              />
+            </c-col>
+  
+            <c-col md="3">
+              <label class="form-label d-block">&nbsp;</label>
+              <button
+                cButton
+                class="btn btn-outline-primary w-100"
+                (click)="copyScenario()"
+                [disabled]="copying || loading"
+              >
+                {{ copying ? 'Copying...' : 'Copy from Active Scenario' }}
+              </button>
+            </c-col>
+          </c-row>
+  
+          <div class="mt-3">
+            <strong>Current Scenario:</strong>
+            {{ scenarioService.selectedScenario()?.name || 'Base' }}
+          </div>
+  
+          <div *ngIf="loading" class="mt-3">Loading scenarios...</div>
+          <div *ngIf="error" class="mt-3 text-danger">{{ error }}</div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+  
+  <c-row>
+    <c-col>
+      <c-card>
+        <c-card-header>Available Scenarios</c-card-header>
+        <c-card-body class="p-0">
+          <div class="table-responsive">
+            <table cTable hover striped class="table mb-0">
+              <thead>
+                <tr>
+                  <th>Scenario ID</th>
+                  <th>Name</th>
+                  <th>Parent Scenario</th>
+                  <th>Base</th>
+                  <th>Created At</th>
+                  <th>Created By</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+  
+              <tbody>
+                <tr *ngFor="let s of scenarios">
+                  <td>{{ s.scenario_id }}</td>
+                  <td>{{ s.name }}</td>
+                  <td>{{ parentScenarioName(s.parent_scenario_id) }}</td>
+                  <td>{{ s.is_base ? 'Yes' : 'No' }}</td>
+                  <td>{{ s.created_at || '-' }}</td>
+                  <td>{{ s.created_by || '-' }}</td>
+                  <td>{{ s.status }}</td>
+                  <td>
+                    <button
+                      cButton
+                      class="btn btn-sm btn-outline-primary"
+                      (click)="selectScenario(s.scenario_id)"
+                      [disabled]="isSelectedScenario(s.scenario_id)"
+                    >
+                      {{ isSelectedScenario(s.scenario_id) ? 'Selected' : 'Select' }}
+                    </button>
+                  </td>
+                </tr>
+  
+                <tr *ngIf="!loading && scenarios.length === 0">
+                  <td colspan="8" class="text-center text-muted py-3">
+                    No scenarios found.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>

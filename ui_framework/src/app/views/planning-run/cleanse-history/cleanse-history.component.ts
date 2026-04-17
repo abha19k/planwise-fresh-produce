@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, computed, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
 import {
@@ -8,6 +8,8 @@ import {
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { firstValueFrom } from 'rxjs';
+
+import { ScenarioService } from '../../../services/scenario.service';
 
 /* ---------- Types ---------- */
 type OutlierMethod = 'Z-Score' | 'IQR' | 'MAD' | 'Hampel';
@@ -32,10 +34,12 @@ interface HistoryRow {
   LocationID: string;
   StartDate: string;
   EndDate: string;
-  Qty: number | null;   // treat null/NaN as missing in cleanse pipeline
+  Qty: number | null;
   Level: string;
   Period: string;
-  Type: string;         // Normal-History or Cleansed-History, etc.
+  Type: string;
+  NetPrice?: number | null;
+  ListPrice?: number | null;
 }
 
 @Component({
@@ -54,18 +58,18 @@ export class CleanseHistoryComponent implements OnInit {
   private _http = inject(HttpClient);
   private _fb = inject(FormBuilder);
 
-  readonly API = 'http://127.0.0.1:8000/api';
+  readonly scenarioService = inject(ScenarioService);
 
-  /* ---------- Saved searches & period ---------- */
+  readonly API = 'http://127.0.0.1:8000/api';
+  readonly DB_SCHEMA = 'planwise_fresh_produce';
+
   savedSearches: SavedSearch[] = [];
   selectedSavedIndex = new FormControl<number>(-1, { nonNullable: true });
   periodSelection = new FormControl<PeriodUi>('Daily', { nonNullable: true });
 
-  /* ---------- UI state ---------- */
   errorMessage: string | null = null;
   loading = false;
 
-  /* ---------- Cleanse form ---------- */
   form: FormGroup = this._fb.group({
     profileName: this._fb.control<string>('', { validators: [Validators.required], nonNullable: true }),
 
@@ -89,27 +93,42 @@ export class CleanseHistoryComponent implements OnInit {
     return this.form.get('outlierMethod')!.value as OutlierMethod;
   }
 
-  /* ---------- Data the cleanse runs on ---------- */
-  rawHistory: HistoryRow[] = [];     // fetched from /history/{period}-by-keys for a saved search
-  previewRows: HistoryRow[] = [];    // cleansed rows ready to save
+  rawHistory: HistoryRow[] = [];
+  previewRows: HistoryRow[] = [];
 
-  /* ---------- Save status ---------- */
   saving = false;
   saveMessage: string | null = null;
   saveError: string | null = null;
+
+  profiles: CleanseProfile[] = [];
 
   ngOnInit(): void {
     this.refreshProfiles();
     this.refreshSavedSearches();
   }
 
-  /* =========================================================
-   * Saved Profiles (load/save settings only)
-   * =======================================================*/
-  profiles: CleanseProfile[] = [];
+  get currentScenarioId(): number {
+    return this.scenarioService.selectedScenarioId();
+  }
 
+  private schemaParams(): HttpParams {
+    return new HttpParams()
+      .set('db_schema', this.DB_SCHEMA);
+  }
+
+  private baseParams(): HttpParams {
+    return new HttpParams()
+      .set('db_schema', this.DB_SCHEMA)
+      .set('scenario_id', this.currentScenarioId);
+  }
+
+  /* =========================================================
+   * Saved Profiles (global settings only)
+   * =======================================================*/
   refreshProfiles() {
-    this._http.get<CleanseProfile[]>(`${this.API}/cleanse/profiles`).subscribe({
+    this._http.get<CleanseProfile[]>(`${this.API}/cleanse/profiles`, {
+      params: this.schemaParams()
+    }).subscribe({
       next: rows => (this.profiles = rows || []),
       error: e => console.error('Failed to load profiles', e)
     });
@@ -117,6 +136,7 @@ export class CleanseHistoryComponent implements OnInit {
 
   loadProfile(p: CleanseProfile) {
     if (!p) return;
+
     const { name, config } = p;
     this.form.patchValue({
       profileName: name || '',
@@ -138,16 +158,20 @@ export class CleanseHistoryComponent implements OnInit {
 
   saveProfile() {
     this.errorMessage = null;
+
     if (this.form.invalid) {
       this.errorMessage = 'Please enter a profile name.';
       this.form.markAllAsTouched();
       return;
     }
+
     const { profileName, ...config } = this.form.getRawValue() as any;
     const body = { name: profileName, config };
 
     this.loading = true;
-    this._http.post(`${this.API}/cleanse/profiles`, body).subscribe({
+    this._http.post(`${this.API}/cleanse/profiles`, body, {
+      params: this.schemaParams()
+    }).subscribe({
       next: () => {
         this.loading = false;
         this.refreshProfiles();
@@ -160,10 +184,12 @@ export class CleanseHistoryComponent implements OnInit {
   }
 
   /* =========================================================
-   * Saved Search → Keys → History (the subset we cleanse)
+   * Saved Search → Keys → History (global inputs)
    * =======================================================*/
   refreshSavedSearches() {
-    this._http.get<SavedSearch[]>(`${this.API}/saved-searches`).subscribe({
+    this._http.get<SavedSearch[]>(`${this.API}/saved-searches`, {
+      params: this.schemaParams()
+    }).subscribe({
       next: rows => (this.savedSearches = rows || []),
       error: e => console.error('Failed to load saved searches', e)
     });
@@ -178,36 +204,44 @@ export class CleanseHistoryComponent implements OnInit {
     this.errorMessage = null;
     this.rawHistory = [];
     this.previewRows = [];
+    this.saveMessage = null;
+    this.saveError = null;
 
     const idx = this.selectedSavedIndex.value ?? -1;
     if (idx < 0 || idx >= this.savedSearches.length) {
       this.errorMessage = 'Please choose a saved search.';
       return;
     }
+
     const q = this.savedSearches[idx].query;
 
     try {
       this.loading = true;
 
-      // 1) resolve keys via /search
-      const params = new HttpParams().set('q', q).set('limit', 20000).set('offset', 0);
-      const search = await firstValueFrom(this._http.get<SearchResult>(`${this.API}/search`, { params }));
+      const searchParams = this.schemaParams()
+        .set('q', q)
+        .set('limit', 20000)
+        .set('offset', 0);
+
+      const search = await firstValueFrom(
+        this._http.get<SearchResult>(`${this.API}/search`, { params: searchParams })
+      );
+
       const keys = search?.keys ?? [];
       if (!keys.length) {
         this.errorMessage = 'No matches for this saved query.';
         return;
       }
 
-      // 2) fetch history by keys for the selected period
       const endpoint = `${this.API}/history/${this.periodSlug()}-by-keys`;
-      const rows = await firstValueFrom(this._http.post<HistoryRow[]>(endpoint, { keys }));
+      const rows = await firstValueFrom(
+        this._http.post<HistoryRow[]>(endpoint, { keys }, { params: this.schemaParams() })
+      );
 
-      // normalize Qty to number|null
       this.rawHistory = (rows || []).map(r => ({
         ...r,
         Qty: (r.Qty === null || r.Qty === undefined || isNaN(Number(r.Qty))) ? null : Number(r.Qty),
       }));
-
     } catch (e: any) {
       this.errorMessage = e?.error?.detail || e?.message || 'Failed to load history for saved search.';
     } finally {
@@ -216,7 +250,7 @@ export class CleanseHistoryComponent implements OnInit {
   }
 
   /* =========================================================
-   * Cleanse preview (outliers + missing) on loaded history
+   * Cleanse preview
    * =======================================================*/
   async generatePreview() {
     this.saveMessage = null;
@@ -228,18 +262,17 @@ export class CleanseHistoryComponent implements OnInit {
       return;
     }
 
-    // group rows by key and sort by StartDate (ascending)
     const byKey = new Map<string, HistoryRow[]>();
     for (const r of this.rawHistory) {
       const k = `${r.ProductID}||${r.ChannelID}||${r.LocationID}`;
       if (!byKey.has(k)) byKey.set(k, []);
       byKey.get(k)!.push(r);
     }
+
     for (const rows of byKey.values()) {
       rows.sort((a, b) => (a.StartDate < b.StartDate ? -1 : a.StartDate > b.StartDate ? 1 : 0));
     }
 
-    // read settings
     const outlierMethod = this.form.get('outlierMethod')!.value as OutlierMethod;
     const op = this.form.get('outlierParams')!.value as any;
     const missingMethod = this.form.get('missingMethod')!.value as MissingMethod;
@@ -248,26 +281,21 @@ export class CleanseHistoryComponent implements OnInit {
     const cleaned: HistoryRow[] = [];
 
     for (const rows of byKey.values()) {
-      // get a working copy of the series
       const series = rows.map(r => r.Qty);
-
-      // ---- Outliers (winsorize to bounds for visibility/preservation) ----
       const newSeries = this.applyOutliers(series, outlierMethod, op);
-
-      // ---- Missing values ----
       const finalSeries = this.applyMissing(newSeries, missingMethod, mp);
 
-      // materialize new rows with Type= C* (but we keep original for reference)
       for (let i = 0; i < rows.length; i++) {
         const base = rows[i];
         const q = finalSeries[i];
+
         if (q === null && missingMethod === 'Drop Rows') {
-          // skip row when dropping
           continue;
         }
+
         cleaned.push({
           ...base,
-          Qty: q ?? 0, // fallback 0 if still null (shouldn’t happen except weird edges)
+          Qty: q ?? 0,
           Type: 'Cleansed-History'
         });
       }
@@ -278,7 +306,6 @@ export class CleanseHistoryComponent implements OnInit {
 
   /* ---------- Outlier handlers ---------- */
   private applyOutliers(series: (number | null)[], method: OutlierMethod, op: any): (number | null)[] {
-    // ignore null for stats; keep indexes
     const vals = series.map(v => (v === null ? NaN : Number(v)));
     const numbers = vals.filter(v => !isNaN(v));
     if (numbers.length < 2) return [...series];
@@ -315,24 +342,27 @@ export class CleanseHistoryComponent implements OnInit {
       return vals.map(v => (isNaN(v) ? null : clip(v, lo, hi)));
     }
 
-    // Hampel (rolling)
     if (method === 'Hampel') {
       const w = Math.max(1, Number(op?.hampelWindow ?? 7));
       const k = Number(op?.hampelK ?? 3);
       const out = vals.slice();
+
       for (let i = 0; i < vals.length; i++) {
         if (isNaN(vals[i])) continue;
         const s = Math.max(0, i - Math.floor(w / 2));
         const e = Math.min(vals.length, s + w);
         const win = vals.slice(s, e).filter(v => !isNaN(v));
         if (win.length < 2) continue;
+
         const m = median(win);
         const localMad = median(win.map(x => Math.abs(x - m))) || 0;
         const sigma = 1.4826 * localMad;
         if (!sigma) continue;
+
         const lo = m - k * sigma, hi = m + k * sigma;
         out[i] = clip(vals[i], lo, hi);
       }
+
       return out.map(v => (isNaN(v) ? null : v));
     }
 
@@ -344,7 +374,6 @@ export class CleanseHistoryComponent implements OnInit {
     const out = [...series];
 
     if (method === 'Drop Rows') {
-      // caller will drop rows whose value is null
       return out.map(v => (v === null ? null : v));
     }
 
@@ -383,13 +412,12 @@ export class CleanseHistoryComponent implements OnInit {
     }
 
     if (method === 'Linear Interpolate') {
-      // simple linear interpolation for inner gaps; edges left as-is (you can FF/BF afterward if desired)
       let i = 0;
       while (i < out.length) {
         if (out[i] !== null) { i++; continue; }
         const start = i - 1;
         while (i < out.length && out[i] === null) i++;
-        const end = i; // first non-null after gap
+        const end = i;
         const y0 = start >= 0 ? out[start] : null;
         const y1 = end < out.length ? out[end] : null;
         if (y0 !== null && y1 !== null) {
@@ -406,21 +434,20 @@ export class CleanseHistoryComponent implements OnInit {
   }
 
   /* =========================================================
-   * Save cleansed rows (UPSERT by unique key incl. Type)
+   * Save cleansed rows (scenario-aware)
    * =======================================================*/
   private mapToPayloadRow(r: HistoryRow) {
     const start = (r.StartDate || '').trim();
     const endRaw = (r.EndDate ?? '').toString().trim();
-  
-    // Treat '', 'None', 'null', 'undefined' as missing
+
     const endMissing =
       !endRaw ||
       endRaw.toLowerCase() === 'none' ||
       endRaw.toLowerCase() === 'null' ||
       endRaw.toLowerCase() === 'undefined';
-  
+
     const end = endMissing ? start : endRaw;
-  
+
     return {
       ProductID: r.ProductID,
       ChannelID: r.ChannelID,
@@ -431,10 +458,8 @@ export class CleanseHistoryComponent implements OnInit {
       Level: String(r.Level ?? ''),
       NetPrice: Number((r as any).NetPrice ?? 0),
       ListPrice: Number((r as any).ListPrice ?? 0),
-
     };
   }
-
 
   async saveCleansedHistory() {
     this.saveMessage = null;
@@ -446,14 +471,24 @@ export class CleanseHistoryComponent implements OnInit {
     }
 
     const rows = this.previewRows.map(r => this.mapToPayloadRow(r));
-    const body = { period: this.periodSlug(), rows }; // backend defaults Type='Cleansed-History'
+    const body = {
+      period: this.periodSlug(),
+      rows,
+      scenario_id: this.currentScenarioId
+    };
 
     try {
       this.saving = true;
+
       const res = await firstValueFrom(
-        this._http.post<{ ok: boolean; count: number }>(`${this.API}/history/ingest-cleansed`, body)
+        this._http.post<{ ok: boolean; count: number }>(
+          `${this.API}/history/ingest-cleansed`,
+          body,
+          { params: this.baseParams() }
+        )
       );
-      this.saveMessage = `Saved ${res?.count ?? rows.length} cleansed rows.`;
+
+      this.saveMessage = `Saved ${res?.count ?? rows.length} cleansed rows for scenario ${this.currentScenarioId}.`;
     } catch (e: any) {
       this.saveError = e?.error?.detail || e?.message || 'Failed to save cleansed history.';
     } finally {
@@ -469,6 +504,7 @@ function median(arr: number[]): number {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
+
 function quantile(sortedAsc: number[], q: number): number {
   if (!sortedAsc.length) return 0;
   const pos = (sortedAsc.length - 1) * q;

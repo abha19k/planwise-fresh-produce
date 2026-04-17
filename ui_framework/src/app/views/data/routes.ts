@@ -83,6 +83,13 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'promotions',
+        loadComponent: () => import('./promotions/promotions.component').then(m => m.PromotionsComponent),
+        data: {
+          title: 'Promotions'
+        }
+      },
+      {
         path: 'supply-data',
         loadComponent: () => import('../data/supply-data/supply-data.component').then(m => m.SupplyDataComponent),
         data: {

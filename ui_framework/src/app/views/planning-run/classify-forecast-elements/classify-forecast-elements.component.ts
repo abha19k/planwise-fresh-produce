@@ -1,32 +1,59 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators
+} from '@angular/forms';
 import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
 import {
-  CardComponent, CardHeaderComponent, CardBodyComponent, CardFooterComponent,
-  RowComponent, ColComponent, ButtonDirective, TextColorDirective, TableDirective
+  CardComponent,
+  CardHeaderComponent,
+  CardBodyComponent,
+  CardFooterComponent,
+  RowComponent,
+  ColComponent,
+  ButtonDirective,
+  TextColorDirective,
+  TableDirective
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { firstValueFrom } from 'rxjs';
 
+import { ScenarioService } from '../../../services/scenario.service';
+
 /** --- Backend contracts --- */
-interface KeyTriplet { ProductID: string; ChannelID: string; LocationID: string; }
-interface SearchResult { query: string; count: number; keys: KeyTriplet[]; }
-interface SavedSearch { id?: number; name: string; query: string; created_at?: string; }
+interface KeyTriplet {
+  ProductID: string;
+  ChannelID: string;
+  LocationID: string;
+}
+
+interface SearchResult {
+  query: string;
+  count: number;
+  keys: KeyTriplet[];
+}
+
+interface SavedSearch {
+  id?: number;
+  name: string;
+  query: string;
+  created_at?: string;
+}
 
 interface ClassificationRow {
   ProductID: string;
   ChannelID: string;
   LocationID: string;
-
   periods: number;
   nonzero_count: number;
   adi: number | null;
   cv2: number | null;
-
   category: 'Smooth' | 'Intermittent' | 'Erratic' | 'Sparse' | 'NotEnoughHistory';
   seasonal?: boolean | null;
-
   createdAt?: string;
 }
 
@@ -38,6 +65,18 @@ interface HistoryRow {
   Qty: number;
 }
 
+interface BackendClassRow {
+  ProductID: string;
+  ChannelID: string;
+  LocationID: string;
+  Period: string;
+  Label: string;
+  Score: number;
+  IsActive: boolean;
+  ComputedAt: string;
+  scenario_id?: number;
+}
+
 type PeriodView = 'Daily' | 'Weekly' | 'Monthly';
 type Algo = 'HoltWinters' | 'XGBoost' | 'MovingAverage' | 'Croston' | 'ARIMA' | 'ETS';
 
@@ -47,99 +86,158 @@ type Algo = 'HoltWinters' | 'XGBoost' | 'MovingAverage' | 'Croston' | 'ARIMA' | 
   templateUrl: './classify-forecast-elements.component.html',
   styleUrls: ['./classify-forecast-elements.component.scss'],
   imports: [
-    CommonModule, ReactiveFormsModule, HttpClientModule,
-    TextColorDirective, TableDirective,
-    CardComponent, CardHeaderComponent, CardBodyComponent, CardFooterComponent,
-    RowComponent, ColComponent, ButtonDirective, IconDirective
+    CommonModule,
+    ReactiveFormsModule,
+    HttpClientModule,
+    TextColorDirective,
+    TableDirective,
+    CardComponent,
+    CardHeaderComponent,
+    CardBodyComponent,
+    CardFooterComponent,
+    RowComponent,
+    ColComponent,
+    ButtonDirective,
+    IconDirective
   ]
 })
 export class ClassifyForecastElementsComponent implements OnInit {
-  /** Services */
   private http = inject(HttpClient);
-  private fb   = inject(FormBuilder);
+  private fb = inject(FormBuilder);
 
-  /** API base */
+  readonly scenarioService = inject(ScenarioService);
+
   readonly API = 'http://127.0.0.1:8000/api';
+  readonly DB_SCHEMA = 'planwise_fresh_produce';
 
-  /** Saved searches */
   savedSearches: SavedSearch[] = [];
   selectedSavedIndex = new FormControl<number>(-1, { nonNullable: true });
-  periodSelection   = new FormControl<PeriodView>('Daily', { nonNullable: true });
+  periodSelection = new FormControl<PeriodView>('Daily', { nonNullable: true });
 
-  /** UI state */
   loading = false;
   errorMsg: string | null = null;
 
-  /** Save state */
   saving = false;
   saveMsg: string | null = null;
   saveErr: string | null = null;
 
-  /** Results */
   rows: ClassificationRow[] = [];
 
-  /** Settings form */
   form: FormGroup = this.fb.group({
-    autoEnabled:   this.fb.control<boolean>(true,  { nonNullable: true }),
+    autoEnabled: this.fb.control<boolean>(true, { nonNullable: true }),
     manualEnabled: this.fb.control<boolean>(false, { nonNullable: true }),
 
-    autoLookback:  this.fb.control<number>(12, { nonNullable: true, validators: [Validators.min(1)] }),
-    autoAlgo:      this.fb.control<Algo>('XGBoost', { nonNullable: true }),
+    autoLookback: this.fb.control<number>(12, {
+      nonNullable: true,
+      validators: [Validators.min(1)]
+    }),
+    autoAlgo: this.fb.control<Algo>('XGBoost', { nonNullable: true }),
 
     manual: this.fb.group({
-      Smooth:           this.fb.control<Algo>('HoltWinters',   { nonNullable: true }),
-      Intermittent:     this.fb.control<Algo>('XGBoost',       { nonNullable: true }),
-      Erratic:          this.fb.control<Algo>('XGBoost',       { nonNullable: true }),
-      Sparse:           this.fb.control<Algo>('MovingAverage', { nonNullable: true }),
-      NotEnoughHistory: this.fb.control<Algo>('XGBoost',       { nonNullable: true }),
+      Smooth: this.fb.control<Algo>('HoltWinters', { nonNullable: true }),
+      Intermittent: this.fb.control<Algo>('XGBoost', { nonNullable: true }),
+      Erratic: this.fb.control<Algo>('XGBoost', { nonNullable: true }),
+      Sparse: this.fb.control<Algo>('MovingAverage', { nonNullable: true }),
+      NotEnoughHistory: this.fb.control<Algo>('XGBoost', { nonNullable: true })
     })
   });
 
-  readonly algoOptions: Algo[] = ['XGBoost','HoltWinters','MovingAverage','Croston','ARIMA','ETS'];
+  readonly algoOptions: Algo[] = [
+    'XGBoost',
+    'HoltWinters',
+    'MovingAverage',
+    'Croston',
+    'ARIMA',
+    'ETS'
+  ];
+
+  get autoEnabledCtrl(): FormControl<boolean> {
+    return this.form.get('autoEnabled') as FormControl<boolean>;
+  }
+
+  get manualEnabledCtrl(): FormControl<boolean> {
+    return this.form.get('manualEnabled') as FormControl<boolean>;
+  }
+
+  get autoLookbackCtrl(): FormControl<number> {
+    return this.form.get('autoLookback') as FormControl<number>;
+  }
+
+  get autoAlgoCtrl(): FormControl<Algo> {
+    return this.form.get('autoAlgo') as FormControl<Algo>;
+  }
+
+  get manualGroup(): FormGroup {
+    return this.form.get('manual') as FormGroup;
+  }
 
   ngOnInit(): void {
     this.refreshSavedSearches();
 
-    // keep auto/manual exclusive
-    this.form.get('autoEnabled')!.valueChanges.subscribe(v => {
-      if (v) this.form.get('manualEnabled')!.setValue(false, { emitEvent: false });
-      else if (!this.form.get('manualEnabled')!.value) this.form.get('manualEnabled')!.setValue(true, { emitEvent: false });
+    this.autoEnabledCtrl.valueChanges.subscribe(v => {
+      if (v) {
+        this.manualEnabledCtrl.setValue(false, { emitEvent: false });
+      } else if (!this.manualEnabledCtrl.value) {
+        this.manualEnabledCtrl.setValue(true, { emitEvent: false });
+      }
     });
-    this.form.get('manualEnabled')!.valueChanges.subscribe(v => {
-      if (v) this.form.get('autoEnabled')!.setValue(false, { emitEvent: false });
-      else if (!this.form.get('autoEnabled')!.value) this.form.get('autoEnabled')!.setValue(true, { emitEvent: false });
+
+    this.manualEnabledCtrl.valueChanges.subscribe(v => {
+      if (v) {
+        this.autoEnabledCtrl.setValue(false, { emitEvent: false });
+      } else if (!this.autoEnabledCtrl.value) {
+        this.autoEnabledCtrl.setValue(true, { emitEvent: false });
+      }
     });
   }
 
-  refreshSavedSearches() {
-    this.http.get<SavedSearch[]>(`${this.API}/saved-searches`).subscribe({
-      next: rows => this.savedSearches = rows || [],
-      error: ()   => this.savedSearches = []
+  get currentScenarioId(): number {
+    return this.scenarioService.selectedScenarioId();
+  }
+
+  private schemaParams(): HttpParams {
+    return new HttpParams().set('db_schema', this.DB_SCHEMA);
+  }
+
+  private baseParams(): HttpParams {
+    return new HttpParams()
+      .set('db_schema', this.DB_SCHEMA)
+      .set('scenario_id', this.currentScenarioId);
+  }
+
+  refreshSavedSearches(): void {
+    this.http.get<SavedSearch[]>(`${this.API}/saved-searches`, {
+      params: this.schemaParams()
+    }).subscribe({
+      next: rows => {
+        this.savedSearches = rows || [];
+      },
+      error: () => {
+        this.savedSearches = [];
+      }
     });
   }
 
-  /** period label → backend slug */
   private periodSlug(): 'daily' | 'weekly' | 'monthly' {
     const p = this.periodSelection.value;
     return p === 'Weekly' ? 'weekly' : p === 'Monthly' ? 'monthly' : 'daily';
   }
 
-  /** What algorithm will be used for a category (for display & saving) */
   chosenAlgo(category: ClassificationRow['category']): string {
-    if (this.form.get('manualEnabled')!.value) {
-      const m = this.form.get('manual')!.value as Record<string, Algo>;
-      return m[category] ?? '(none)';
+    if (this.manualEnabledCtrl.value) {
+      const manualValues = this.manualGroup.value as Record<string, Algo>;
+      return manualValues[category] ?? '(none)';
     }
-    return this.form.get('autoAlgo')!.value as string;
+    return this.autoAlgoCtrl.value;
   }
 
-  trackByKey = (_: number, r: ClassificationRow) =>
+  trackByKey = (_: number, r: ClassificationRow): string =>
     `${r.ProductID}||${r.ChannelID}||${r.LocationID}`;
 
-  /** Run: resolve keys from saved search then classify & load results with ADI/CV² */
-  async runClassification() {
+  async runClassification(): Promise<void> {
     this.errorMsg = null;
-    this.saveMsg = this.saveErr = null;
+    this.saveMsg = null;
+    this.saveErr = null;
     this.rows = [];
 
     const idx = this.selectedSavedIndex.value;
@@ -156,37 +254,37 @@ export class ClassifyForecastElementsComponent implements OnInit {
     }
 
     this.loading = true;
+
     try {
-      // 1) Resolve keys from /api/search
-      const params = new HttpParams().set('q', q).set('limit', 20000).set('offset', 0);
-      const sr = await firstValueFrom(this.http.get<SearchResult>(`${this.API}/search`, { params }));
+      const searchParams = this.schemaParams()
+        .set('q', q)
+        .set('limit', 20000)
+        .set('offset', 0);
+
+      const sr = await firstValueFrom(
+        this.http.get<SearchResult>(`${this.API}/search`, { params: searchParams })
+      );
+
       const keys = sr?.keys ?? [];
       if (!keys.length) {
         this.errorMsg = 'No matches for this saved query.';
         return;
       }
 
-      // 2) Trigger backend classification compute (kept as-is)
-      const computePayload: any = {
+      const computePayload = {
         period: this.periodSlug(),
-        lookback_buckets: 8,
-        min_sum: 1.0,
+        scenario_id: this.currentScenarioId,
+        lookback_buckets: Number(this.autoLookbackCtrl.value ?? 12),
+        min_sum: 1.0
       };
-      await firstValueFrom(this.http.post(`${this.API}/classify/compute`, computePayload));
 
-      // 3) Fetch classification results
-      interface BackendClassRow {
-        ProductID: string;
-        ChannelID: string;
-        LocationID: string;
-        Period: string;
-        Label: string;
-        Score: number;
-        IsActive: boolean;
-        ComputedAt: string;
-      }
+      await firstValueFrom(
+        this.http.post(`${this.API}/classify/compute`, computePayload, {
+          params: this.schemaParams()
+        })
+      );
 
-      const resParams = new HttpParams()
+      const resParams = this.baseParams()
         .set('period', this.periodSlug())
         .set('include_inactive', 'true');
 
@@ -195,45 +293,48 @@ export class ClassifyForecastElementsComponent implements OnInit {
       );
 
       if (!allRes?.length) {
-        this.errorMsg = 'No classification results found. Please run Cleanse History first.';
+        this.errorMsg = 'No classification results found for this scenario. Please run Cleanse History first.';
         return;
       }
 
-      // Restrict to saved-search keys
       const keySet = new Set(keys.map(k => `${k.ProductID}||${k.ChannelID}||${k.LocationID}`));
-      const filtered = (allRes || []).filter(r => keySet.has(`${r.ProductID}||${r.ChannelID}||${r.LocationID}`));
+      const filtered = (allRes || []).filter(r =>
+        keySet.has(`${r.ProductID}||${r.ChannelID}||${r.LocationID}`)
+      );
 
       if (!filtered.length) {
-        this.errorMsg = 'No Cleansed-History found for these keys. Please run Cleanse History first.';
+        this.errorMsg = 'No scenario cleansed history found for these keys. Please run Cleanse History first.';
         return;
       }
 
-      // 4) Load history for these keys (used to compute ADI/CV²)
       const histRows = await firstValueFrom(
         this.http.post<HistoryRow[]>(
           `${this.API}/history/${this.periodSlug()}-by-keys`,
-          { keys }
+          { keys },
+          { params: this.schemaParams() }
         )
       );
 
-      // Build per-key series
       const seriesMap = new Map<string, number[]>();
       for (const h of histRows || []) {
         const key = `${h.ProductID}||${h.ChannelID}||${h.LocationID}`;
         const qty = Number(h.Qty) || 0;
-        if (!seriesMap.has(key)) seriesMap.set(key, []);
+
+        if (!seriesMap.has(key)) {
+          seriesMap.set(key, []);
+        }
         seriesMap.get(key)!.push(qty);
       }
 
       const minNonZero = 6;
 
-      function computeMetrics(qtys: number[]): {
+      const computeMetrics = (qtys: number[]): {
         periods: number;
         nonzero: number;
         adi: number | null;
         cv2: number | null;
         category: ClassificationRow['category'];
-      } {
+      } => {
         const periods = qtys.length;
         const nonzeroVals = qtys.filter(q => q > 0);
         const nonzero = nonzeroVals.length;
@@ -243,7 +344,6 @@ export class ClassifyForecastElementsComponent implements OnInit {
         }
 
         const adi = periods / nonzero;
-
         const mean = nonzeroVals.reduce((s, q) => s + q, 0) / nonzeroVals.length;
 
         if (!(mean > 0) || nonzeroVals.length < 2) {
@@ -264,9 +364,8 @@ export class ClassifyForecastElementsComponent implements OnInit {
         else category = 'Sparse';
 
         return { periods, nonzero, adi, cv2, category };
-      }
+      };
 
-      // 5) Build UI rows
       this.rows = filtered.map(r => {
         const key = `${r.ProductID}||${r.ChannelID}||${r.LocationID}`;
         const qtys = seriesMap.get(key) || [];
@@ -282,7 +381,7 @@ export class ClassifyForecastElementsComponent implements OnInit {
           cv2: m.cv2,
           category: m.category,
           seasonal: null,
-          createdAt: r.ComputedAt,
+          createdAt: r.ComputedAt
         };
       });
 
@@ -296,9 +395,9 @@ export class ClassifyForecastElementsComponent implements OnInit {
     }
   }
 
-  /** Save computed rows to the backend so the Data page can read them */
-  async saveResults() {
-    this.saveMsg = this.saveErr = null;
+  async saveResults(): Promise<void> {
+    this.saveMsg = null;
+    this.saveErr = null;
 
     if (!this.rows.length) {
       this.saveErr = 'Nothing to save. Run classification first.';
@@ -307,6 +406,7 @@ export class ClassifyForecastElementsComponent implements OnInit {
 
     const payload = {
       period: this.periodSlug(),
+      scenario_id: this.currentScenarioId,
       rows: this.rows.map(r => ({
         ProductID: r.ProductID,
         ChannelID: r.ChannelID,
@@ -315,16 +415,20 @@ export class ClassifyForecastElementsComponent implements OnInit {
         CV2: r.cv2,
         Category: r.category,
         Algorithm: this.chosenAlgo(r.category),
-        CreatedAt: r.createdAt ?? null,
+        CreatedAt: r.createdAt ?? null
       }))
     };
 
     this.saving = true;
     try {
       const res = await firstValueFrom(
-        this.http.post<{ ok: boolean; count: number }>(`${this.API}/classify/save`, payload)
+        this.http.post<{ ok: boolean; count: number; scenario_id?: number }>(
+          `${this.API}/classify/save`,
+          payload,
+          { params: this.schemaParams() }
+        )
       );
-      this.saveMsg = `Saved ${res?.count ?? payload.rows.length} result(s).`;
+      this.saveMsg = `Saved ${res?.count ?? payload.rows.length} result(s) for scenario ${this.currentScenarioId}.`;
     } catch (e: any) {
       this.saveErr = e?.error?.detail || e?.message || 'Failed to save results.';
     } finally {

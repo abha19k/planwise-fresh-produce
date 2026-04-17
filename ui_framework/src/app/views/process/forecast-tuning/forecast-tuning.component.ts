@@ -6,6 +6,7 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  inject,
 } from '@angular/core';
 import {
   FormControl,
@@ -29,8 +30,11 @@ import {
   TableDirective,
 } from '@coreui/angular';
 
+import { ScenarioService } from '../../../services/scenario.service';
+
 type PeriodUI = 'Daily' | 'Weekly' | 'Monthly';
 type Variant = 'baseline' | 'feat';
+type LevelUI = '111' | '121' | '221';
 
 interface Key {
   ProductID: string;
@@ -94,8 +98,21 @@ interface HistoryByQueryResponse {
 }
 
 interface Point {
-  x: string; // date string
+  x: string;
   y: number;
+}
+
+interface RunOneDbResponse {
+  ok: boolean;
+  scenario_id: number;
+  message: string;
+  tag: string;
+  db_result?: any;
+  rows_baseline?: number;
+  rows_feat?: number;
+  backtest_rows?: number;
+  mean_wmape_base?: number;
+  mean_wmape_feat?: number;
 }
 
 @Component({
@@ -105,8 +122,6 @@ interface Point {
     CommonModule,
     ReactiveFormsModule,
     HttpClientModule,
-
-    // CoreUI
     RowComponent,
     ColComponent,
     CardComponent,
@@ -119,29 +134,31 @@ interface Point {
   styleUrls: ['./forecast-tuning.component.scss'],
 })
 export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy {
-  // ---------- API ----------
-  apiBase = 'http://127.0.0.1:8000';
+  private http = inject(HttpClient);
 
-  // ---------- UI ----------
+  readonly scenarioService = inject(ScenarioService);
+
+  private readonly apiBase = 'http://127.0.0.1:8000';
+  private readonly DB_SCHEMA = 'planwise_fresh_produce';
+
   loading = false;
   errorMessage = '';
 
   metrics: Record<string, number> | null = null;
   tuneResult: any | null = null;
 
-  // ---------- Chart ----------
   @ViewChild('chartCanvas', { static: false })
   chartCanvas?: ElementRef<HTMLCanvasElement>;
 
   private chart: Chart | null = null;
 
-  // ---------- Dropdown arrays (as used in HTML) ----------
   productIds: string[] = [];
   channelIds: string[] = [];
   locationIds: string[] = [];
+  levels: LevelUI[] = ['111', '121', '221'];
 
-  // ---------- Reactive controls (as used in HTML) ----------
   periodSelection = new FormControl<PeriodUI>('Daily', { nonNullable: true });
+  levelSelection = new FormControl<LevelUI>('111', { nonNullable: true });
 
   productIdCtrl = new FormControl<string>('', { nonNullable: true });
   channelIdCtrl = new FormControl<string>('', { nonNullable: true });
@@ -151,12 +168,23 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   queryCtrl = new FormControl<string>({ value: '', disabled: true }, { nonNullable: true });
   newSavedName = new FormControl<string>('', { nonNullable: true });
 
-  lagCtrl = new FormControl<number>(1, { nonNullable: true, validators: [Validators.min(1)] });
-  horizonCtrl = new FormControl<number>(28, { nonNullable: true, validators: [Validators.min(1)] });
-  foldsCtrl = new FormControl<number>(6, { nonNullable: true, validators: [Validators.min(1), Validators.max(6)] });
+  lagCtrl = new FormControl<number>(1, {
+    nonNullable: true,
+    validators: [Validators.min(1)]
+  });
+
+  horizonCtrl = new FormControl<number>(28, {
+    nonNullable: true,
+    validators: [Validators.min(1)]
+  });
+
+  foldsCtrl = new FormControl<number>(6, {
+    nonNullable: true,
+    validators: [Validators.min(1), Validators.max(6)]
+  });
+
   useCleansedCtrl = new FormControl<boolean>(false, { nonNullable: true });
 
-  // feature + params forms (as used in HTML)
   xgbFeaturesForm = new FormGroup({
     seasonal_lags: new FormControl<string>(''),
     rolling_windows: new FormControl<string>(''),
@@ -177,37 +205,36 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     gamma: new FormControl<number>(0.0, { nonNullable: true }),
   });
 
-  // ---------- Data series ----------
   histSeries: Point[] = [];
   fcSeries: Point[] = [];
   querySeries: Point[] = [];
   queryFcSeries: Point[] = [];
 
-  // ---------- Saved searches ----------
   savedSearches: SavedSearch[] = [];
 
-  constructor(private http: HttpClient) {}
-
-  // =======================
-  // lifecycle
-  // =======================
   ngOnInit(): void {
     this.loading = true;
 
     forkJoin({
-      products: this.http.get<any[]>(`${this.apiBase}/api/products`),
-      channels: this.http.get<any[]>(`${this.apiBase}/api/channels`),
-      locations: this.http.get<any[]>(`${this.apiBase}/api/locations`),
-      saved: this.http.get<SavedSearch[]>(`${this.apiBase}/api/saved-searches`),
+      products: this.http.get<any[]>(`${this.apiBase}/api/products`, {
+        params: this.schemaParams()
+      }),
+      channels: this.http.get<any[]>(`${this.apiBase}/api/channels`, {
+        params: this.schemaParams()
+      }),
+      locations: this.http.get<any[]>(`${this.apiBase}/api/locations`, {
+        params: this.schemaParams()
+      }),
+      saved: this.http.get<SavedSearch[]>(`${this.apiBase}/api/saved-searches`, {
+        params: this.schemaParams()
+      }),
     })
       .pipe(
         tap(({ products, channels, locations, saved }) => {
           this.productIds = (products ?? []).map((r) => String(r.ProductID)).filter(Boolean);
           this.channelIds = (channels ?? []).map((r) => String(r.ChannelID)).filter(Boolean);
           this.locationIds = (locations ?? []).map((r) => String(r.LocationID)).filter(Boolean);
-
           this.savedSearches = Array.isArray(saved) ? saved : [];
-
           this.refreshQueryPreview();
         }),
         finalize(() => (this.loading = false)),
@@ -215,17 +242,21 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
       )
       .subscribe();
 
-    // update query preview whenever any key changes
     this.periodSelection.valueChanges.subscribe(() => {
       this.clearPlotOnly();
       this.refreshQueryPreview();
       this.renderChart();
     });
+
+    this.levelSelection.valueChanges.subscribe(() => {
+      this.clearPlotOnly();
+      this.renderChart();
+    });
+
     this.productIdCtrl.valueChanges.subscribe(() => this.refreshQueryPreview());
     this.channelIdCtrl.valueChanges.subscribe(() => this.refreshQueryPreview());
     this.locationIdCtrl.valueChanges.subscribe(() => this.refreshQueryPreview());
 
-    // selecting saved search loads query string into queryCtrl
     this.savedSearchId.valueChanges.subscribe((id) => {
       const s = this.savedSearches.find((x) => x.id === id) ?? null;
       this.queryCtrl.setValue(s?.query ?? '', { emitEvent: false });
@@ -233,7 +264,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   ngAfterViewInit(): void {
-    // create empty chart so "Load History" immediately updates it
     this.renderChart();
   }
 
@@ -244,9 +274,20 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  // =======================
-  // misc helpers
-  // =======================
+  get currentScenarioId(): number {
+    return this.scenarioService.selectedScenarioId();
+  }
+
+  private schemaParams(): HttpParams {
+    return new HttpParams().set('db_schema', this.DB_SCHEMA);
+  }
+
+  private baseParams(): HttpParams {
+    return new HttpParams()
+      .set('db_schema', this.DB_SCHEMA)
+      .set('scenario_id', this.currentScenarioId);
+  }
+
   private fail(err: any, fallback: any) {
     console.error(err);
     this.errorMessage = String(err?.error?.detail ?? err?.message ?? 'Unknown error');
@@ -256,6 +297,10 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
 
   private getPeriod(): PeriodUI {
     return (this.periodSelection.value ?? 'Daily') as PeriodUI;
+  }
+
+  private getLevel(): LevelUI {
+    return (this.levelSelection.value ?? '111') as LevelUI;
   }
 
   private getSelectedKey(): Key | null {
@@ -272,8 +317,9 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
       this.queryCtrl.setValue('', { emitEvent: false });
       return;
     }
+
     const q = `productid:${key.ProductID} AND channelid:${key.ChannelID} AND locationid:${key.LocationID}`;
-    // only set this auto query if user has NOT selected a saved search
+
     if (!this.savedSearchId.value) {
       this.queryCtrl.setValue(q, { emitEvent: false });
     }
@@ -286,28 +332,50 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     this.queryFcSeries = [];
   }
 
-  // ✅ NEW: clear only the "key" plot series
   private clearKeySeries(): void {
     this.histSeries = [];
     this.fcSeries = [];
   }
 
-  // ✅ NEW: clear only the "query" plot series
   private clearQuerySeries(): void {
     this.querySeries = [];
     this.queryFcSeries = [];
   }
 
-  // =======================
-  // API wrappers
-  // =======================
+  private buildRunOneDbBody(saveToDb: boolean): any {
+    const level = this.getLevel();
+    const period = this.getPeriod();
+    const horizon = Math.max(1, Number(this.horizonCtrl.value ?? 1));
+
+    return {
+      db_schema: this.DB_SCHEMA,
+      scenario_id: this.currentScenarioId,
+      level,
+      period,
+      horizon,
+      weather_table: 'weather_daily',
+      promo_table: 'promotions',
+      tag: `${level}_${period}_scenario_${this.currentScenarioId}`,
+      save_to_db: saveToDb
+    };
+  }
+
+  private runForecastJob(saveToDb: boolean) {
+    const body = this.buildRunOneDbBody(saveToDb);
+
+    return this.http.post<RunOneDbResponse>(
+      `${this.apiBase}/forecast/run-one-db`,
+      body
+    );
+  }
+
   private loadHistoryByKeys(keys: Key[], limitPerKey: number) {
     const period = this.getPeriod();
     const endpoint =
       period === 'Daily' ? 'daily-by-keys' : period === 'Weekly' ? 'weekly-by-keys' : 'monthly-by-keys';
 
     const url = `${this.apiBase}/api/history/${endpoint}`;
-    const params = new HttpParams().set('limit_per_key', String(limitPerKey));
+    const params = this.schemaParams().set('limit_per_key', String(limitPerKey));
 
     return this.http
       .post<HistoryRow[]>(url, { keys }, { params })
@@ -315,7 +383,7 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private loadForecastForKey(key: Key, variant: Variant) {
-    const params = new HttpParams()
+    const params = this.baseParams()
       .set('variant', variant)
       .set('productid', key.ProductID)
       .set('channelid', key.ChannelID)
@@ -330,14 +398,18 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private searchKeysByQuery(q: string) {
-    const params = new HttpParams().set('q', q).set('limit', '50000').set('offset', '0');
+    const params = this.schemaParams()
+      .set('q', q)
+      .set('limit', '50000')
+      .set('offset', '0');
+
     return this.http.get<SearchKeysResponse>(`${this.apiBase}/api/search`, { params }).pipe(
       map((res) => (Array.isArray(res?.keys) ? res.keys : []))
     );
   }
 
   private loadHistoryByQuery(q: string) {
-    const params = new HttpParams()
+    const params = this.schemaParams()
       .set('q', q)
       .set('limit', '5000')
       .set('offset', '0')
@@ -348,9 +420,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     );
   }
 
-  // =======================
-  // SERIES builders (null-safe)
-  // =======================
   private toHistorySeries(rows: HistoryRow[] | null | undefined): Point[] {
     const arr = Array.isArray(rows) ? rows : [];
     return [...arr]
@@ -365,9 +434,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
       .map((r) => ({ x: String(r.StartDate), y: Number(r.ForecastQty ?? 0) || 0 }));
   }
 
-  // =======================
-  // CHART
-  // =======================
   private renderChart(): void {
     const canvas = this.chartCanvas?.nativeElement;
     if (!canvas) return;
@@ -379,7 +445,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     const dsHistQ = this.projectToLabels(this.querySeries, labels);
     const dsFcQ = this.projectToLabels(this.queryFcSeries, labels);
 
-    // ✅ Only include datasets that actually have data (prevents "old" empty overlays)
     const datasets: any[] = [];
     if (this.histSeries.length) datasets.push({ label: 'History', data: dsHist });
     if (this.fcSeries.length) datasets.push({ label: 'Forecast', data: dsFc });
@@ -420,9 +485,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     return labels.map((x) => (m.has(x) ? (m.get(x) as number) : null));
   }
 
-  // =======================
-  // TOP buttons (single key)
-  // =======================
   updatePlot(): void {
     this.errorMessage = '';
     this.metrics = null;
@@ -435,16 +497,13 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.loading = true;
-
-    // ✅ KEY mode should hide QUERY lines
     this.clearQuerySeries();
 
     this.loadHistoryByKeys([key], 2000)
       .pipe(
         tap((hist) => {
           this.histSeries = this.toHistorySeries(hist);
-          this.fcSeries = []; // loading history only
-
+          this.fcSeries = [];
           this.renderChart();
         }),
         finalize(() => (this.loading = false)),
@@ -454,7 +513,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   runSingleKeyForecast(save: boolean): void {
-    // save flag currently unused unless you have an endpoint; plotting still works.
     this.errorMessage = '';
     this.metrics = null;
     this.tuneResult = null;
@@ -466,8 +524,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.loading = true;
-
-    // ✅ KEY mode should hide QUERY lines
     this.clearQuerySeries();
 
     this.loadHistoryByKeys([key], 2000)
@@ -476,16 +532,23 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
           this.histSeries = this.toHistorySeries(hist);
           this.renderChart();
         }),
-        switchMap(() => this.loadForecastForKey(key, 'feat')),
+        switchMap(() => this.runForecastJob(save)),
+        tap((runRes) => {
+          this.tuneResult = runRes;
+        }),
+        switchMap((runRes) => {
+          if (!runRes?.ok) {
+            throw new Error(runRes?.message || 'Forecast run failed');
+          }
+
+          return this.loadForecastForKey(key, 'feat');
+        }),
         finalize(() => (this.loading = false)),
         catchError((err) => this.fail(err, []))
       )
       .subscribe((fc) => {
         this.fcSeries = this.toForecastSeries(fc);
         this.renderChart();
-        if (save) {
-          // If you implement a save endpoint later, call it here.
-        }
       });
   }
 
@@ -497,9 +560,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     this.errorMessage = 'Tune (grid) not wired in this TS (needs backend endpoint).';
   }
 
-  // =======================
-  // SAVED SEARCH actions (bottom)
-  // =======================
   saveCurrentAsSearch(): void {
     this.errorMessage = '';
 
@@ -518,9 +578,15 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     this.loading = true;
 
     this.http
-      .post<SavedSearch>(`${this.apiBase}/api/saved-searches`, { name, query })
+      .post<SavedSearch>(`${this.apiBase}/api/saved-searches`, { name, query }, {
+        params: this.schemaParams()
+      })
       .pipe(
-        switchMap(() => this.http.get<SavedSearch[]>(`${this.apiBase}/api/saved-searches`)),
+        switchMap(() =>
+          this.http.get<SavedSearch[]>(`${this.apiBase}/api/saved-searches`, {
+            params: this.schemaParams()
+          })
+        ),
         finalize(() => (this.loading = false)),
         catchError((err) => this.fail(err, []))
       )
@@ -542,8 +608,6 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.loading = true;
-
-    // ✅ QUERY mode should hide KEY lines
     this.clearKeySeries();
 
     this.loadHistoryByQuery(q)
@@ -570,16 +634,15 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     this.loading = true;
-
-    // ✅ QUERY mode should hide KEY lines
     this.clearKeySeries();
 
-    // We aggregate by keys matched by /api/search
     this.searchKeysByQuery(q)
       .pipe(
         switchMap((keys) => {
           const limited = keys.slice(0, 200);
-          if (!limited.length) return of({ keys: limited, hist: [] as HistoryRow[] });
+          if (!limited.length) {
+            return of({ keys: limited, hist: [] as HistoryRow[] });
+          }
 
           return this.loadHistoryByKeys(limited, 800).pipe(
             map((hist) => ({ keys: limited, hist }))
@@ -590,27 +653,36 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
           this.renderChart();
         }),
         switchMap(({ keys }) => {
-          if (!keys.length) return of([] as ForecastRow[]);
-          const calls = keys.slice(0, 200).map((k) => this.loadForecastForKey(k, 'feat'));
-          return forkJoin(calls).pipe(map((lists) => lists.flat()));
+          if (!keys.length) {
+            return of({ keys, fcRows: [] as ForecastRow[] });
+          }
+
+          return this.runForecastJob(save).pipe(
+            tap((runRes) => {
+              this.tuneResult = runRes;
+            }),
+            switchMap((runRes) => {
+              if (!runRes?.ok) {
+                throw new Error(runRes?.message || 'Forecast run failed');
+              }
+
+              const calls = keys.slice(0, 200).map((k) => this.loadForecastForKey(k, 'feat'));
+              return forkJoin(calls).pipe(
+                map((lists) => ({ keys, fcRows: lists.flat() }))
+              );
+            })
+          );
         }),
         finalize(() => (this.loading = false)),
-        catchError((err) => this.fail(err, []))
+        catchError((err) => this.fail(err, { keys: [] as Key[], fcRows: [] as ForecastRow[] }))
       )
-      .subscribe((fcRows) => {
+      .subscribe(({ fcRows }) => {
         this.queryFcSeries = this.toForecastSeries(fcRows);
         this.renderChart();
-        if (save) {
-          // hook save endpoint here later
-        }
       });
   }
 
-  // =======================
-  // Defaults button
-  // =======================
   setDefaultsForPeriod(p: PeriodUI): void {
-    // your UI button calls this with periodSelection.value
     if (p === 'Daily') {
       this.lagCtrl.setValue(1);
       this.horizonCtrl.setValue(28);

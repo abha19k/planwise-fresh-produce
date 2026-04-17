@@ -623,24 +623,30 @@ def write_forecast_df_to_db(
     db_schema: str,
     table: str,
     df: pd.DataFrame,
+    scenario_id: int,
 ) -> Dict[str, int]:
     """
-    Writes forecast rows into "db_schema"."table".
-    We DELETE existing rows for the same (Period, Method, StartDate window) and INSERT the new batch.
+    Writes forecast rows into "db_schema"."table" for ONE scenario_id.
+    We DELETE existing rows for the same (scenario_id, Period, Method, StartDate window) and INSERT the new batch.
     """
     if df is None or df.empty:
         return {"deleted": 0, "inserted": 0}
 
     needed = [
+        "scenario_id",
         "ProductID","ChannelID","LocationID",
         "StartDate","EndDate","Period",
         "Qty","UOM","NetPrice","ListPrice","ForecastQty","Method"
     ]
-    missing = [c for c in needed if c not in df.columns]
+
+    # validate required df cols (except scenario_id which we add)
+    required_in_df = [c for c in needed if c != "scenario_id"]
+    missing = [c for c in required_in_df if c not in df.columns]
     if missing:
         raise ValueError(f"Forecast df missing columns: {missing}")
 
     out = df.copy()
+    out["scenario_id"] = int(scenario_id)
 
     # normalize text
     for c in ["ProductID","ChannelID","LocationID","Period","UOM","Method"]:
@@ -665,26 +671,30 @@ def write_forecast_df_to_db(
 
     del_sql = text(f"""
       DELETE FROM {table_qual}
-      WHERE "Period" = :period
+      WHERE scenario_id = :scenario_id
+        AND "Period" = :period
         AND "Method" = :method
         AND "StartDate" BETWEEN CAST(:smin AS date) AND CAST(:smax AS date);
     """)
 
     ins_sql = text(f"""
       INSERT INTO {table_qual}
-        ("ProductID","ChannelID","LocationID","StartDate","EndDate","Period",
+        (scenario_id,
+         "ProductID","ChannelID","LocationID","StartDate","EndDate","Period",
          "Qty","UOM","NetPrice","ListPrice","ForecastQty","Method")
       VALUES
-        (:ProductID,:ChannelID,:LocationID,
+        (:scenario_id,
+         :ProductID,:ChannelID,:LocationID,
          CAST(:StartDate AS date), CAST(:EndDate AS date), :Period,
          :Qty, :UOM, :NetPrice, :ListPrice, :ForecastQty, :Method);
     """)
-
+    print("DEBUG write_forecast_df_to_db scenario_id =", scenario_id, "table =", table)
     payload = out[needed].where(pd.notna(out[needed]), None).to_dict(orient="records")
 
     deleted = 0
     with engine.begin() as conn:
         res = conn.execute(del_sql, {
+            "scenario_id": int(scenario_id),
             "period": period_ui,
             "method": method,
             "smin": str(smin.date()),
@@ -702,6 +712,7 @@ def write_forecast_df_to_db(
     return {"deleted": deleted, "inserted": len(payload)}
 
 
+
 # ============================================================
 # MAIN ENTRY: RUN ONE JOB (no CSV, no PNG)
 # ============================================================
@@ -713,10 +724,12 @@ def run_one_job_df(
     promos: pd.DataFrame,
     tag: str,  # kept for logging / traceability
 
+
     # DB output (recommended)
     db_engine: Optional[Engine] = None,
     db_schema: Optional[str] = None,
     level: Optional[str] = None,
+    scenario_id: int = 1,
     write_to_db: bool = True,
 
     # optional: also return results to caller
@@ -838,8 +851,8 @@ def run_one_job_df(
             raise ValueError("write_to_db=True requires db_engine, db_schema, and level.")
         t_base = _forecast_table_name(level, period, baseline=True)
         t_feat = _forecast_table_name(level, period, baseline=False)
-        db_results["baseline"] = write_forecast_df_to_db(db_engine, db_schema, t_base, fc_base)
-        db_results["feat"] = write_forecast_df_to_db(db_engine, db_schema, t_feat, fc_feat)
+        db_results["baseline"] = write_forecast_df_to_db(db_engine, db_schema, t_base, fc_base, scenario_id=scenario_id)
+        db_results["feat"]     = write_forecast_df_to_db(db_engine, db_schema, t_feat, fc_feat, scenario_id=scenario_id)
 
     # backtest summary (in-memory)
     bt_h = BACKTEST_CFG[period]["bt_horizon"]

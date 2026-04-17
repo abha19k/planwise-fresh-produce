@@ -1,6 +1,12 @@
-<!-- Saved search & Run -->
 <c-card class="mb-3">
-  <c-card-header>Classify Forecast Unit and Select Model</c-card-header>
+  <c-card-header>
+    Classify Forecast Unit and Select Model
+    <div class="mt-2 small">
+      <strong>Current Scenario:</strong>
+      {{ scenarioService.selectedScenario()?.name || 'Base' }}
+    </div>
+  </c-card-header>
+
   <c-card-body>
     <div class="row g-3 align-items-end">
       <div class="col-sm-6">
@@ -37,15 +43,103 @@
   </c-card-body>
 </c-card>
 
-<!-- Settings card (unchanged) ... -->
+<c-card class="mb-3">
+  <c-card-header>Classification Settings</c-card-header>
 
-<!-- Results + Save -->
-<c-card>
-  <c-card-header>Forecast Elements Classified (from Cleansed History)</c-card-header>
   <c-card-body>
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <form [formGroup]="form">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <div class="form-check">
+            <input
+              id="autoEnabled"
+              class="form-check-input"
+              type="checkbox"
+              [formControl]="autoEnabledCtrl"
+            />
+            <label class="form-check-label" for="autoEnabled">Auto model selection</label>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="form-check">
+            <input
+              id="manualEnabled"
+              class="form-check-input"
+              type="checkbox"
+              [formControl]="manualEnabledCtrl"
+            />
+            <label class="form-check-label" for="manualEnabled">Manual model selection</label>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Auto lookback</label>
+          <input
+            type="number"
+            class="form-control"
+            [formControl]="autoLookbackCtrl"
+            min="1"
+          />
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Auto algorithm</label>
+          <select class="form-select" [formControl]="autoAlgoCtrl">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1" [formGroup]="manualGroup">
+        <div class="col-md-4">
+          <label class="form-label">Smooth</label>
+          <select class="form-select" formControlName="Smooth">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Intermittent</label>
+          <select class="form-select" formControlName="Intermittent">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Erratic</label>
+          <select class="form-select" formControlName="Erratic">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Sparse</label>
+          <select class="form-select" formControlName="Sparse">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">NotEnoughHistory</label>
+          <select class="form-select" formControlName="NotEnoughHistory">
+            <option *ngFor="let a of algoOptions" [value]="a">{{ a }}</option>
+          </select>
+        </div>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>
+
+<c-card>
+  <c-card-header>
+    Forecast Elements Classified (from Scenario Cleansed History)
+  </c-card-header>
+
+  <c-card-body>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <div class="text-muted">
-        {{ rows.length }} row(s) ready to save
+        {{ rows.length }} row(s) ready to save for scenario {{ currentScenarioId }}
       </div>
 
       <div class="d-flex gap-2">
@@ -69,6 +163,8 @@
             <th>ProductID</th>
             <th>ChannelID</th>
             <th>LocationID</th>
+            <th class="text-end">Periods</th>
+            <th class="text-end">Non-zero</th>
             <th class="text-end">ADI</th>
             <th class="text-end">CV²</th>
             <th>Category</th>
@@ -82,6 +178,8 @@
             <td>{{ r.ProductID }}</td>
             <td>{{ r.ChannelID }}</td>
             <td>{{ r.LocationID }}</td>
+            <td class="text-end">{{ r.periods }}</td>
+            <td class="text-end">{{ r.nonzero_count }}</td>
             <td class="text-end">{{ r.adi === null ? '—' : (r.adi | number:'1.2-2') }}</td>
             <td class="text-end">{{ r.cv2 === null ? '—' : (r.cv2 | number:'1.2-2') }}</td>
             <td>{{ r.category }}</td>

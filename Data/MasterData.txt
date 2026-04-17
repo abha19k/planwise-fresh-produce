@@ -1,0 +1,37 @@
+Master data
+
+product: (ProductID)
+
+channel: (ChannelID)
+
+location: (LocationID)
+
+forecastelement: (ProductID, ChannelID, LocationID, Level) (or without Level if Level is always derivable)
+
+saved_searches: (id) (already PK-ish)
+
+cleanse_profiles: (id) (already PK-ish)
+
+Weather & promotions
+
+weather_daily: (LocationID, Date)
+
+promotions: ideally (PromoID)
+If PromoID is not unique / sometimes null, use composite:
+(PromoName, StartDate, EndDate, ProductID, ChannelID, LocationID)
+
+Classified forecast elements
+
+classified_forecast_elements: (ProductID, ChannelID, LocationID, Period)
+
+History fact tables (history_111_*, history_121_*, history_221_*)
+
+Recommended key:
+(ProductID, ChannelID, LocationID, StartDate, EndDate, Period)
+
+Note: I noticed some EndDate columns are text in history_111_daily, history_121_daily, history_221_daily. That’s not ideal, but we can still index it as-is for now.
+
+Forecast fact tables (forecast_*)
+
+Recommended key (because Method can create multiple rows per same PCL/date):
+(ProductID, ChannelID, LocationID, StartDate, EndDate, Period, Method)
