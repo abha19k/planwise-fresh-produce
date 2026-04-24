@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import (
     DEFAULT_SCHEMA,
@@ -38,6 +38,7 @@ def api_history_search(
     limit: int = Query(200, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -100,6 +101,7 @@ def api_history_by_query(
     limit: int = Query(200, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -230,6 +232,7 @@ def api_history_daily_by_keys(
     body: KeysRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
     limit_per_key: int = Query(5000, ge=1, le=20000),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     return _history_by_keys(body, period_ui="Daily", db_schema=db_schema, limit_per_key=limit_per_key)
 
@@ -239,6 +242,7 @@ def api_history_weekly_by_keys(
     body: KeysRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
     limit_per_key: int = Query(5000, ge=1, le=20000),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     return _history_by_keys(body, period_ui="Weekly", db_schema=db_schema, limit_per_key=limit_per_key)
 
@@ -248,5 +252,6 @@ def api_history_monthly_by_keys(
     body: KeysRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
     limit_per_key: int = Query(5000, ge=1, le=20000),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     return _history_by_keys(body, period_ui="Monthly", db_schema=db_schema, limit_per_key=limit_per_key)

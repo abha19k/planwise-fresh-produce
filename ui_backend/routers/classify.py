@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
+from services.auth_service import require_roles
 
 from core.db import ENGINE, get_engine, _qualified
 from core.config import (
@@ -38,6 +39,7 @@ def _ensure_engine():
 def api_classify_compute(
     body: ClassifyComputeRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     period = (body.period or "").strip().lower()
     if period not in ("daily", "weekly", "monthly"):
@@ -57,6 +59,7 @@ def api_classify_results(
     scenario_id: int = Query(1, ge=1),
     include_inactive: bool = Query(True),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -114,6 +117,7 @@ def api_classify_results(
 def api_classify_save(
     body: ClassifySaveRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 
@@ -194,6 +198,7 @@ def api_classify_saved(
     limit: int = Query(20000, ge=1, le=50000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 

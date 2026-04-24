@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Dict
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import (
     DEFAULT_SCHEMA,
@@ -30,7 +30,10 @@ def _ensure_engine():
 
 
 @router.get("/api/products")
-def api_products(db_schema: str = Query(DEFAULT_SCHEMA)):
+def api_products(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     _ensure_engine()
 
     qual = _qualified(db_schema, PRODUCT_TABLE)
@@ -46,7 +49,10 @@ def api_products(db_schema: str = Query(DEFAULT_SCHEMA)):
 
 
 @router.get("/api/channels")
-def api_channels(db_schema: str = Query(DEFAULT_SCHEMA)):
+def api_channels(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     _ensure_engine()
 
     qual = _qualified(db_schema, CHANNEL_TABLE)
@@ -62,7 +68,10 @@ def api_channels(db_schema: str = Query(DEFAULT_SCHEMA)):
 
 
 @router.get("/api/locations")
-def api_locations(db_schema: str = Query(DEFAULT_SCHEMA)):
+def api_locations(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     _ensure_engine()
 
     qual = _qualified(db_schema, LOCATION_TABLE)
@@ -87,6 +96,7 @@ def api_forecastelements(
     limit: int = Query(20000, ge=1, le=50000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 

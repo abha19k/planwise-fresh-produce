@@ -5,10 +5,10 @@ import re
 import traceback
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 import forecast
 
 from core.db import ENGINE, get_engine, _qident, _qualified
@@ -62,6 +62,7 @@ def api_forecast(
     limit: int = Query(200, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -139,6 +140,7 @@ def api_forecast_search(
     offset: int = Query(0, ge=0),
     scenario_id: int = Query(1, ge=1),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -227,12 +229,17 @@ def api_forecast_search(
 
 
 @router.get("/forecast/jobs")
-def list_jobs():
+def list_jobs(
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     return [{"level": j[0], "period": j[1], "horizon": j[2]} for j in forecast.JOBS]
 
 
 @router.post("/forecast/run-one-db")
-def run_one_db(req: RunOneDBRequest):
+def run_one_db(
+    req: RunOneDBRequest,
+    current_user=Depends(require_roles("admin", "planner")),
+):
     try:
         _ensure_engine()
 
@@ -330,7 +337,10 @@ def run_one_db(req: RunOneDBRequest):
 
 
 @router.post("/forecast/run-all-db")
-def run_all_db(req: RunAllDBRequest):
+def run_all_db(
+    req: RunAllDBRequest,
+    current_user=Depends(require_roles("admin", "planner")),
+):
     _ensure_engine()
 
     schema = req.db_schema.strip()
@@ -408,7 +418,9 @@ def run_all_db(req: RunAllDBRequest):
 
 
 @router.get("/forecast/files")
-def list_files():
+def list_files(
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     files = []
     for p in sorted(OUT_DIR.glob("*")):
         if p.is_file() and p.suffix.lower() in ALLOWED_EXTS:
@@ -421,7 +433,10 @@ def list_files():
 
 
 @router.get("/forecast/file/{filename}")
-def download_file(filename: str):
+def download_file(
+    filename: str,
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     filename = _safe_filename(filename)
     p = OUT_DIR / filename
     if not p.exists() or not p.is_file():

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qualified
 from core.config import (
     DEFAULT_SCHEMA,
@@ -39,6 +39,7 @@ def api_kpi_single(
     scenario_id: int = Query(1, ge=1),
     limit: int = Query(5000, ge=1, le=50000),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -147,6 +148,7 @@ def api_kpi_by_query(
     limit_fc_per_key: int = Query(5000, ge=10, le=50000),
     scenario_id: int = Query(1),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 

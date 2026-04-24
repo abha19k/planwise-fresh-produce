@@ -6,9 +6,9 @@ import numpy as np
 
 from datetime import datetime, date
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qualified
 from core.config import DEFAULT_SCHEMA, SCENARIO_TABLE, SCENARIO_OVERRIDE_TABLE
 
@@ -31,7 +31,10 @@ def _ensure_engine():
 
 
 @router.get("/api/scenarios")
-def api_scenarios(db_schema: str = Query(DEFAULT_SCHEMA)):
+def api_scenarios(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+    ):
     _ensure_engine()
 
     _ensure_scenario_tables(db_schema)
@@ -87,6 +90,7 @@ def api_copy_scenario(
     scenario_id: int,
     body: ScenarioCopyIn,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 
@@ -167,6 +171,7 @@ def api_upsert_override(
     scenario_id: int,
     body: OverrideUpsertIn,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 

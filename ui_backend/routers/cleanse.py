@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import DEFAULT_SCHEMA, CLEANSED_HISTORY_TABLE
 from models.schemas import CleanseProfileIn, CleansedIngestRequest
@@ -24,7 +24,9 @@ def _ensure_engine():
 
 
 @router.get("/api/cleanse/profiles")
-def list_cleanse_profiles(db_schema: str = Query(DEFAULT_SCHEMA)):
+def list_cleanse_profiles(db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     _ensure_engine()
 
     ddl = f"""
@@ -55,6 +57,7 @@ def list_cleanse_profiles(db_schema: str = Query(DEFAULT_SCHEMA)):
 def upsert_cleanse_profile(
     body: CleanseProfileIn,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 
@@ -93,6 +96,7 @@ def upsert_cleanse_profile(
 def api_ingest_cleansed_history(
     body: CleansedIngestRequest,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 

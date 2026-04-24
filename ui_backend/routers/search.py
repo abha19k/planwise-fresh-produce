@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import (
     DEFAULT_SCHEMA,
@@ -26,7 +26,10 @@ def _ensure_engine():
 
 
 @router.get("/api/saved-searches")
-def api_saved_searches(db_schema: str = Query(DEFAULT_SCHEMA)):
+def api_saved_searches(
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
     _ensure_engine()
 
     try:
@@ -46,6 +49,7 @@ def api_saved_searches(db_schema: str = Query(DEFAULT_SCHEMA)):
 def api_create_saved_search(
     body: SavedSearchIn,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 
@@ -82,6 +86,7 @@ def api_create_saved_search(
 def api_delete_saved_search(
     search_id: int,
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
 ):
     _ensure_engine()
 
@@ -106,6 +111,7 @@ def api_search(
     limit: int = Query(20000, ge=1, le=50000),
     offset: int = Query(0, ge=0),
     db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 

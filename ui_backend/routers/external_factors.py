@@ -6,9 +6,9 @@ from datetime import date, datetime
 from typing import Any, Dict, Optional
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-
+from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qualified
 from core.config import (
     DEFAULT_SCHEMA,
@@ -38,6 +38,7 @@ def api_weather_daily(
     locationid: str = Query("", description="optional"),
     date_from: str = Query(..., description="YYYY-MM-DD"),
     date_to: str = Query(..., description="YYYY-MM-DD"),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
@@ -142,6 +143,7 @@ def api_promotions(
     locationid: str = Query("", description="optional"),
     date_from: str = Query(..., description="YYYY-MM-DD"),
     date_to: str = Query(..., description="YYYY-MM-DD"),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
 ):
     _ensure_engine()
 
