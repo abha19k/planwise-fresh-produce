@@ -27,6 +27,7 @@ from routers.kpi import router as kpi_router
 from routers.forecast import router as forecast_router
 from routers.external_factors import router as external_factors_router
 from routers.auth import router as auth_router
+from routers.admin import router as admin_router
 
 app = FastAPI(title="PlanWise API (DB tables)", version="3.4.0")
 
@@ -51,7 +52,7 @@ app.include_router(kpi_router)
 app.include_router(forecast_router)
 app.include_router(external_factors_router)
 app.include_router(auth_router)
-
+app.include_router(admin_router)
 
 @app.get("/health")
 def health():

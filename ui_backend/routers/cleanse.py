@@ -4,6 +4,7 @@ import json
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+from services.audit_service import write_audit_log
 from sqlalchemy import text
 from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qident, _qualified
@@ -87,6 +88,15 @@ def upsert_cleanse_profile(
         with ENGINE.begin() as conn:
             conn.execute(text(ddl))
             conn.execute(upsert_sql, {"name": name, "config": config_json})
+
+        write_audit_log(
+            action="cleanse.profile.upsert",
+            entity="cleanse_profile",
+            user_id=str(current_user["id"]),
+            entity_id=name,
+            details={"name": name},
+            db_schema=db_schema,
+        )
         return {"ok": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/cleanse/profiles save failed: {e}")
@@ -200,6 +210,19 @@ def api_ingest_cleansed_history(
             chunk_size = 5000
             for i in range(0, len(payload), chunk_size):
                 conn.execute(sql, payload[i:i + chunk_size])
+
+        write_audit_log(
+            action="history.ingest_cleansed",
+            entity="history_cleansed",
+            user_id=str(current_user["id"]),
+            entity_id=f"scenario_{sid}",
+            details={
+                "scenario_id": sid,
+                "count": len(payload),
+                "period": period_ui,
+            },
+            db_schema=db_schema,
+        )
 
         return {"ok": True, "count": len(payload), "scenario_id": sid}
     except Exception as e:

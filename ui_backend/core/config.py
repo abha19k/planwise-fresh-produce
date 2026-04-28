@@ -16,6 +16,11 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTS = {".csv", ".png", ".txt", ".log"}
 
+JWT_SECRET_KEY = os.getenv(
+    "JWT_SECRET_KEY",
+    "DEV_ONLY_CHANGE_ME_LONG_SECRET"
+)
+
 # ------------------------------------------------------------
 # DATABASE
 # ------------------------------------------------------------

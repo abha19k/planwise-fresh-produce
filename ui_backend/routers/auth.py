@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy import text
-from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qualified
 from core.config import DEFAULT_SCHEMA
+from services.audit_service import write_audit_log
 
 from models.auth import (
     LoginRequest,
@@ -22,6 +22,9 @@ from services.auth_service import (
     decode_token,
     get_current_user,
     require_roles,
+    store_refresh_token,
+    is_refresh_token_valid,
+    revoke_refresh_token,
 )
 
 router = APIRouter()
@@ -42,10 +45,33 @@ def api_login(
 
     user = authenticate_user(body.email, body.password, db_schema)
     if not user:
+        write_audit_log(
+            action="login.failed",
+            entity="auth",
+            user_id=None,
+            entity_id=body.email,
+            details={"email": body.email},
+            db_schema=db_schema,
+        )
         raise HTTPException(status_code=401, detail="Invalid email or password")
-
+    
     access_token = create_access_token({"sub": user["email"]})
-    _ = create_refresh_token({"sub": user["email"]})
+    refresh_token = create_refresh_token({"sub": user["email"]})
+
+    store_refresh_token(
+    user_id=str(user["id"]),
+    refresh_token=refresh_token,
+    db_schema=db_schema,
+    )
+
+    write_audit_log(
+    action="login.success",
+    entity="auth",
+    user_id=str(user["id"]),
+    entity_id=str(user["id"]),
+    details={"email": user["email"]},
+    db_schema=db_schema,
+    )
 
     return {
         "user": {
@@ -57,16 +83,23 @@ def api_login(
             "is_active": user["is_active"],
         },
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "expires_in": 30 * 60,
     }
 
 
 @router.post("/api/refresh", response_model=TokenResponse)
-def api_refresh(body: dict):
+def api_refresh(
+    body: dict,
+    db_schema: str = Query(DEFAULT_SCHEMA),
+):
     refresh_token = body.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=400, detail="refresh_token is required")
+
+    if not is_refresh_token_valid(refresh_token, db_schema):
+        raise HTTPException(status_code=401, detail="Refresh token revoked or expired")
 
     payload = decode_token(refresh_token)
 
@@ -87,9 +120,24 @@ def api_refresh(body: dict):
 
 
 @router.post("/api/logout")
-def api_logout():
-    return {"ok": True}
+def api_logout(
+    body: dict,
+    db_schema: str = Query(DEFAULT_SCHEMA),
+):
+    refresh_token = body.get("refresh_token")
+    if refresh_token:
+        revoke_refresh_token(refresh_token, db_schema)
 
+    write_audit_log(
+        action="logout",
+        entity="auth",
+        user_id=None,
+        entity_id=None,
+        details={"refresh_token_revoked": bool(refresh_token)},
+        db_schema=db_schema,
+    )
+
+    return {"ok": True}
 
 @router.get("/api/me", response_model=UserOut)
 def api_me(user=Depends(get_current_user)):
@@ -141,6 +189,7 @@ def api_create_user(
         WHERE r.name = :role
     """)
 
+
     with ENGINE.begin() as conn:
         user_row = conn.execute(
             insert_user_sql,
@@ -158,6 +207,18 @@ def api_create_user(
                 "role": body.role,
             },
         )
+
+    write_audit_log(
+        action="user.create",
+        entity="user",
+        user_id=str(current_user["id"]),
+        entity_id=str(user_row["id"]),
+        details={
+            "email": user_row["email"],
+            "role": body.role,
+        },
+        db_schema=db_schema,
+    )
 
     return {
         "ok": True,

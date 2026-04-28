@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 from services.auth_service import require_roles
 import forecast
+from services.audit_service import write_audit_log
 
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import (
@@ -306,6 +307,21 @@ def run_one_db(
             return_frames=(not req.save_to_db),
         )
 
+        write_audit_log(
+            action="forecast.run_one",
+            entity="forecast",
+            user_id=str(current_user["id"]),
+            entity_id=f"{level}_{period}_scenario_{req.scenario_id}",
+            details={
+                "scenario_id": req.scenario_id,
+                "level": level,
+                "period": period,
+                "horizon": horizon,
+                "save_to_db": req.save_to_db,
+            },
+            db_schema=schema,
+        )
+
         response = {
             "ok": True,
             "scenario_id": req.scenario_id,
@@ -413,6 +429,18 @@ def run_all_db(
                 "tag": tag,
                 "error": str(e),
             })
+    
+    write_audit_log(
+        action="forecast.run_all",
+        entity="forecast",
+        user_id=str(current_user["id"]),
+        entity_id=f"scenario_{req.scenario_id}",
+        details={
+            "scenario_id": req.scenario_id,
+            "results_count": len(results),
+        },
+        db_schema=schema,
+    )
 
     return {"ok": True, "db_schema": schema, "results": results}
 

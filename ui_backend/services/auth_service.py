@@ -11,10 +11,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 
 from core.db import ENGINE, get_engine, _qualified
-from core.config import DEFAULT_SCHEMA
+from core.config import DEFAULT_SCHEMA, JWT_SECRET_KEY
+import hashlib
+from uuid import uuid4
 
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "change_this_in_production")
+SECRET_KEY = JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_MINUTES = 30
 REFRESH_TOKEN_DAYS = 7
@@ -78,7 +80,16 @@ def get_user_by_email(
     _ensure_engine()
 
     sql = text(f"""
-    SELECT id, email, password_hash, full_name, is_active, created_at
+    SELECT
+      id,
+      email,
+      password_hash,
+      full_name,
+      is_active,
+      created_at,
+      failed_login_attempts,
+      locked_until,
+      last_login_at
     FROM {_qualified(db_schema, "users")}
     WHERE LOWER(email) = LOWER(:email)
     LIMIT 1
@@ -132,14 +143,24 @@ def authenticate_user(
 ):
     user = get_user_by_email(email, db_schema)
 
+    # Do not reveal whether email exists
     if not user:
         return None
 
     if not user["is_active"]:
         return None
 
+    if is_user_locked(user):
+        raise HTTPException(
+            status_code=423,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
     if not verify_password(password, user["password_hash"]):
+        record_failed_login(email, db_schema)
         return None
+
+    record_successful_login(email, db_schema)
 
     roles = get_user_roles(str(user["id"]), db_schema)
 
@@ -185,3 +206,132 @@ def require_roles(*roles):
         return user
 
     return checker
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def store_refresh_token(
+    user_id: str,
+    refresh_token: str,
+    db_schema: str = DEFAULT_SCHEMA,
+):
+    _ensure_engine()
+
+    token_hash = hash_token(refresh_token)
+
+    sql = text(f"""
+    INSERT INTO {_qualified(db_schema, "refresh_tokens")}
+      (user_id, token_hash, expires_at, revoked, created_at)
+    VALUES
+      (
+        CAST(:user_id AS uuid),
+        :token_hash,
+        NOW() + INTERVAL '{REFRESH_TOKEN_DAYS} days',
+        FALSE,
+        NOW()
+      )
+    """)
+
+    with ENGINE.begin() as conn:
+        conn.execute(sql, {
+            "user_id": user_id,
+            "token_hash": token_hash,
+        })
+
+
+def is_refresh_token_valid(
+    refresh_token: str,
+    db_schema: str = DEFAULT_SCHEMA,
+) -> bool:
+    _ensure_engine()
+
+    token_hash = hash_token(refresh_token)
+
+    sql = text(f"""
+    SELECT 1
+    FROM {_qualified(db_schema, "refresh_tokens")}
+    WHERE token_hash = :token_hash
+      AND revoked = FALSE
+      AND expires_at > NOW()
+    LIMIT 1
+    """)
+
+    with ENGINE.begin() as conn:
+        row = conn.execute(sql, {"token_hash": token_hash}).scalar()
+
+    return bool(row)
+
+
+def revoke_refresh_token(
+    refresh_token: str,
+    db_schema: str = DEFAULT_SCHEMA,
+):
+    _ensure_engine()
+
+    token_hash = hash_token(refresh_token)
+
+    sql = text(f"""
+    UPDATE {_qualified(db_schema, "refresh_tokens")}
+    SET revoked = TRUE
+    WHERE token_hash = :token_hash
+      AND revoked = FALSE
+    """)
+
+    with ENGINE.begin() as conn:
+        conn.execute(sql, {"token_hash": token_hash})
+
+def is_user_locked(user: Dict[str, Any]) -> bool:
+    locked_until = user.get("locked_until")
+    if not locked_until:
+        return False
+
+    now = datetime.now(timezone.utc)
+
+    # PostgreSQL may return timezone-aware datetime already
+    if locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+
+    return locked_until > now
+
+
+def record_failed_login(
+    email: str,
+    db_schema: str = DEFAULT_SCHEMA,
+):
+    _ensure_engine()
+
+    sql = text(f"""
+    UPDATE {_qualified(db_schema, "users")}
+    SET
+      failed_login_attempts = failed_login_attempts + 1,
+      locked_until = CASE
+        WHEN failed_login_attempts + 1 >= 5
+        THEN NOW() + INTERVAL '15 minutes'
+        ELSE locked_until
+      END
+    WHERE LOWER(email) = LOWER(:email)
+    """)
+
+    with ENGINE.begin() as conn:
+        conn.execute(sql, {"email": email})
+
+
+def record_successful_login(
+    email: str,
+    db_schema: str = DEFAULT_SCHEMA,
+):
+    _ensure_engine()
+
+    sql = text(f"""
+    UPDATE {_qualified(db_schema, "users")}
+    SET
+      failed_login_attempts = 0,
+      locked_until = NULL,
+      last_login_at = NOW()
+    WHERE LOWER(email) = LOWER(:email)
+    """)
+
+    with ENGINE.begin() as conn:
+        conn.execute(sql, {"email": email})

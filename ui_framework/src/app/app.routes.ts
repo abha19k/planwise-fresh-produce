@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { DefaultLayoutComponent } from './layout';
+import { authGuard } from './services/auth.guard';
+import { roleGuard } from './services/role.guard';
 
 export const routes: Routes = [
   {
@@ -10,6 +12,7 @@ export const routes: Routes = [
   {
     path: '',
     component: DefaultLayoutComponent,
+    canActivate: [authGuard],
     data: {
       title: 'Home'
     },
@@ -20,22 +23,28 @@ export const routes: Routes = [
       },
       {
         path: 'data',
-        loadChildren: () => import('./views/data/routes').then((m) => m.routes)
+        loadChildren: () => import('./views/data/routes').then((m) => m.routes),
+        canActivate: [roleGuard],
+        data: { roles: ['admin', 'planner', 'viewer'] }
       },
       {
         path: 'process',
-        loadChildren: () => import('./views/process/routes').then((m) => m.routes)
+        loadChildren: () => import('./views/process/routes').then((m) => m.routes),
+        canActivate: [roleGuard],
+        data: { roles: ['admin', 'planner'] }
       },
       {
         path: 'planning-run',
-        loadChildren: () => import('./views/planning-run/routes').then((m) => m.routes)
+        loadChildren: () => import('./views/planning-run/routes').then((m) => m.routes),
+        canActivate: [roleGuard],
+        data: { roles: ['admin', 'planner'] }
       },
       {
         path: 'search',
         loadChildren: () => import('./views/search/routes').then(m => m.routes),
-        },
-        { path: '', pathMatch: 'full', redirectTo: 'search' },
-        { path: '**', redirectTo: 'search' },      
+        canActivate: [roleGuard],
+        data: { roles: ['admin', 'planner', 'viewer'] }
+      },
       {
         path: 'theme',
         loadChildren: () => import('./views/theme/routes').then((m) => m.routes)
@@ -67,40 +76,35 @@ export const routes: Routes = [
       {
         path: 'charts',
         loadChildren: () => import('./views/charts/routes').then((m) => m.routes)
-      },
-      {
-        path: 'pages',
-        loadChildren: () => import('./views/pages/routes').then((m) => m.routes)
       }
     ]
   },
   {
     path: '404',
     loadComponent: () => import('./views/pages/page404/page404.component').then(m => m.Page404Component),
-    data: {
-      title: 'Page 404'
-    }
+    data: { title: 'Page 404' }
   },
   {
     path: '500',
     loadComponent: () => import('./views/pages/page500/page500.component').then(m => m.Page500Component),
-    data: {
-      title: 'Page 500'
-    }
+    data: { title: 'Page 500' }
   },
   {
     path: 'login',
     loadComponent: () => import('./views/pages/login/login.component').then(m => m.LoginComponent),
-    data: {
-      title: 'Login Page'
-    }
+    data: { title: 'Login Page' }
   },
   {
     path: 'register',
     loadComponent: () => import('./views/pages/register/register.component').then(m => m.RegisterComponent),
+    canActivate: [authGuard, roleGuard],
     data: {
-      title: 'Register Page'
+      title: 'Register Page',
+      roles: ['admin']
     }
   },
-  { path: '**', redirectTo: 'dashboard' }
+  {
+    path: '**',
+    redirectTo: 'dashboard'
+  }
 ];

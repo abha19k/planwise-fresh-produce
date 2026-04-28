@@ -11,6 +11,7 @@ from sqlalchemy import text
 from services.auth_service import require_roles
 from core.db import ENGINE, get_engine, _qualified
 from core.config import DEFAULT_SCHEMA, SCENARIO_TABLE, SCENARIO_OVERRIDE_TABLE
+from services.audit_service import write_audit_log
 
 from models.schemas import (
     ScenarioCopyIn,
@@ -34,7 +35,7 @@ def _ensure_engine():
 def api_scenarios(
     db_schema: str = Query(DEFAULT_SCHEMA),
     current_user=Depends(require_roles("admin", "planner", "viewer")),
-    ):
+):
     _ensure_engine()
 
     _ensure_scenario_tables(db_schema)
@@ -129,6 +130,7 @@ def api_copy_scenario(
         created_by,
         status;
     """)
+   
 
     try:
         with ENGINE.begin() as conn:
@@ -160,11 +162,25 @@ def api_copy_scenario(
         if item.get("parent_scenario_id") is not None:
             item["parent_scenario_id"] = int(item["parent_scenario_id"])
 
-        return item
+        write_audit_log(
+            action="scenario.copy",
+            entity="scenario",
+            user_id=str(current_user["id"]),
+            entity_id=str(item["scenario_id"]),
+            details={
+                "name": item["name"],
+                "parent_scenario_id": item["parent_scenario_id"],
+            },
+            db_schema=db_schema,
+        ) 
 
+        return item
+    
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/scenarios/{scenario_id}/copy failed: {e}")
-
+    
+    
 
 @router.post("/api/scenarios/{scenario_id}/override")
 def api_upsert_override(
@@ -205,6 +221,7 @@ def api_upsert_override(
         updated_by = EXCLUDED.updated_by;
     """)
 
+
     try:
         with ENGINE.begin() as conn:
             conn.execute(sql, {
@@ -215,6 +232,19 @@ def api_upsert_override(
                 "is_deleted": bool(body.is_deleted),
                 "updated_by": body.updated_by
             })
+
+        write_audit_log(
+            action="scenario.override",
+            entity="scenario_override",
+            user_id=str(current_user["id"]),
+            entity_id=str(scenario_id),
+            details={
+                "table_name": tname,
+                "pk": body.pk,
+                "is_deleted": body.is_deleted,
+            },
+            db_schema=db_schema,
+        )
 
         return {"ok": True}
 

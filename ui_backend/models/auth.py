@@ -31,6 +31,7 @@ class UserOut(BaseModel):
 class LoginResponse(BaseModel):
     user: UserOut
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in: int
 
