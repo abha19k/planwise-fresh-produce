@@ -14,7 +14,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 
 import { catchError, finalize, forkJoin, map, of, switchMap, tap } from 'rxjs';
 
@@ -121,7 +121,7 @@ interface RunOneDbResponse {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule,
+    
     RowComponent,
     ColComponent,
     CardComponent,

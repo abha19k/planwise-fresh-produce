@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ButtonDirective,
   CardBodyComponent,
@@ -15,6 +15,7 @@ import {
 } from '@coreui/angular';
 import { IconDirective } from '@coreui/icons-angular';
 import { firstValueFrom } from 'rxjs';
+import { SchemaService } from '../../../services/schema.service';
 
 interface SavedSearch { id?: number; name: string; query: string; created_at?: string; }
 
@@ -47,7 +48,7 @@ type HistoryTypeFilter = 'Both' | 'Normal-History' | 'Cleansed-History';
   templateUrl: 'history.component.html',
   styleUrls: ['history.component.scss'],
   imports: [
-    CommonModule, ReactiveFormsModule, HttpClientModule,
+    CommonModule, ReactiveFormsModule,
     TextColorDirective, CardComponent, CardBodyComponent, CardHeaderComponent, CardFooterComponent,
     RowComponent, ColComponent, ButtonDirective, IconDirective, TableDirective
   ]
@@ -84,6 +85,12 @@ export class HistoryComponent implements OnInit {
   // Mode tracking (typed vs saved query)
   private activeMode: 'typed' | 'saved' | null = null;
   private activeSavedQuery: string = '';
+
+  public selectedHistoryFile: File | null = null;
+  public uploadMessage: string | null = null;
+  public uploadingHistory = false;
+
+  private schemaService = inject(SchemaService);
 
   ngOnInit(): void {
     this.refreshSavedSearches();
@@ -130,7 +137,13 @@ export class HistoryComponent implements OnInit {
   }
 
   refreshSavedSearches() {
-    this.http.get<SavedSearch[]>(`${this.API}/saved-searches`).subscribe({
+    this.http.get<SavedSearch[]>(
+      `${this.API}/saved-searches`,
+      {
+        params: new HttpParams()
+          .set('db_schema', this.schemaService.getSchema())
+      }
+    ).subscribe({
       next: rows => { this.savedSearches = rows || []; },
       error: e => { console.error('saved-searches failed', e); }
     });
@@ -234,7 +247,8 @@ export class HistoryComponent implements OnInit {
         .set('term', term)
         .set('period', per)
         .set('limit', String(this.pageSize))
-        .set('offset', String(offset));
+        .set('offset', String(offset))
+        .set('db_schema', this.schemaService.getSchema());
 
       if (lvl) params = params.set('level', lvl);
       if (typeParam) params = params.set('type', typeParam); // ✅ backend should filter on Type if provided
@@ -280,7 +294,8 @@ export class HistoryComponent implements OnInit {
       let params = new HttpParams()
         .set('q', q)
         .set('limit', String(this.pageSize))
-        .set('offset', String(offset));
+        .set('offset', String(offset))
+        .set('db_schema', this.schemaService.getSchema());
 
       if (per) params = params.set('period', per);
       if (lvl) params = params.set('level', lvl);
@@ -351,6 +366,47 @@ export class HistoryComponent implements OnInit {
 
     this.clearRows();
     this.errorMessage = null;
+  }
+
+  onHistoryFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] || null;
+  
+    this.selectedHistoryFile = file;
+    this.uploadMessage = file ? `Selected: ${file.name}` : null;
+  }
+  
+  uploadHistoryFile(): void {
+    if (!this.selectedHistoryFile) {
+      this.uploadMessage = 'Please choose an Excel file first.';
+      return;
+    }
+  
+    const formData = new FormData();
+    formData.append('file', this.selectedHistoryFile);
+  
+    const per = this.period.value || 'Weekly';
+  
+    this.uploadingHistory = true;
+    this.uploadMessage = null;
+  
+    let params = new HttpParams()
+       .set('period', per)
+       .set('db_schema', this.schemaService.getSchema())
+  
+    this.http.post<any>(`${this.API}/import/history`, formData, { params }).subscribe({
+      next: (res) => {
+        this.uploadingHistory = false;
+        this.uploadMessage = `Uploaded ${res.rows_inserted ?? 0} rows successfully.`;
+  
+        this.currentPage = 1;
+        this.runActiveSearch().catch(() => {});
+      },
+      error: (err) => {
+        this.uploadingHistory = false;
+        this.uploadMessage = err?.error?.detail || 'History upload failed.';
+      }
+    });
   }
 
   exportToCSV() {

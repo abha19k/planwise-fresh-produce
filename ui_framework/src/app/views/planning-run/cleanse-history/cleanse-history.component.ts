@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ButtonDirective, CardBodyComponent, CardComponent, CardFooterComponent, CardHeaderComponent,
   ColComponent, RowComponent, TextColorDirective
@@ -48,7 +48,7 @@ interface HistoryRow {
   templateUrl: './cleanse-history.component.html',
   styleUrls: ['./cleanse-history.component.scss'],
   imports: [
-    CommonModule, ReactiveFormsModule, HttpClientModule,
+    CommonModule, ReactiveFormsModule,
     TextColorDirective,
     CardComponent, CardHeaderComponent, CardBodyComponent, CardFooterComponent,
     RowComponent, ColComponent, ButtonDirective, IconDirective

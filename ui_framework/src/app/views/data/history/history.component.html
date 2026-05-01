@@ -1,3 +1,63 @@
+<c-row class="mb-3">
+  <c-col>
+    <c-card>
+      <c-card-header>
+        Upload History Excel
+      </c-card-header>
+
+      <c-card-body>
+        <c-row>
+          <c-col sm="5">
+            <label>History Excel file</label>
+            <input
+              class="form-control"
+              type="file"
+              accept=".xlsx,.xls"
+              (change)="onHistoryFileSelected($event)"
+            />
+            <small class="text-muted">
+              Required columns: ProductID, ChannelID, LocationID, StartDate, EndDate, Qty, Level.
+            </small>
+          </c-col>
+
+          <c-col sm="3">
+            <label>Upload as Period</label>
+            <select class="form-select" [formControl]="period">
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+            </select>
+          </c-col>
+
+          <c-col sm="2" class="d-flex align-items-end">
+            <button
+              class="btn btn-primary w-100"
+              (click)="uploadHistoryFile()"
+              [disabled]="uploadingHistory || !selectedHistoryFile"
+            >
+              {{ uploadingHistory ? 'Uploading...' : 'Upload' }}
+            </button>
+          </c-col>
+
+          <c-col sm="2" class="d-flex align-items-end">
+            <button
+              class="btn btn-outline-secondary w-100"
+              (click)="selectedHistoryFile = null; uploadMessage = null"
+              [disabled]="uploadingHistory"
+            >
+              Clear File
+            </button>
+          </c-col>
+        </c-row>
+
+        <div *ngIf="uploadMessage" class="alert alert-info mt-3 mb-0">
+          {{ uploadMessage }}
+        </div>
+      </c-card-body>
+    </c-card>
+  </c-col>
+</c-row>
+
 <!-- Saved Search (optional) -->
 <c-row class="mb-3">
   <c-col sm="8">

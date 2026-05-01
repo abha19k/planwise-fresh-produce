@@ -6,7 +6,7 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ButtonDirective,
   CardBodyComponent,
@@ -53,7 +53,7 @@ interface LocationRow { LocationID: string; }
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule,
+    
     TextColorDirective,
     CardComponent,
     CardBodyComponent,

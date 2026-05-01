@@ -7,7 +7,7 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   CardComponent,
   CardHeaderComponent,
@@ -88,7 +88,7 @@ type Algo = 'HoltWinters' | 'XGBoost' | 'MovingAverage' | 'Croston' | 'ARIMA' | 
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule,
+    
     TextColorDirective,
     TableDirective,
     CardComponent,

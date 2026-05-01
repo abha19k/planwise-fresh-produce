@@ -3,7 +3,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 
 import {
   CardComponent,
@@ -63,7 +63,7 @@ interface CorrelationResponse {
   imports: [
     CommonModule,
     FormsModule,
-    HttpClientModule,
+    
     CardComponent,
     CardHeaderComponent,
     CardBodyComponent,

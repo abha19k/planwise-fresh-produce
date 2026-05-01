@@ -48,23 +48,30 @@ export class LoginComponent {
     private authService: AuthService,
     private router: Router
   ) {}
-
+  
   login(): void {
+    console.log('Login clicked'); // ADD THIS
+  
     this.errorMessage = '';
-
+  
     if (!this.email || !this.password) {
       this.errorMessage = 'Please enter email and password.';
       return;
     }
-
+  
     this.loading = true;
-
+  
     this.authService.login(this.email, this.password).subscribe({
-      next: () => {
+      next: (res) => {
+        console.log('Login success', res); // ADD THIS
+  
         this.loading = false;
-        this.router.navigate(['/dashboard']);
+  
+        this.router.navigate(['/dashboard']); // SHOULD RUN
       },
       error: (err) => {
+        console.log('Login error', err); // ADD THIS
+  
         this.loading = false;
         this.errorMessage = err?.error?.detail || 'Login failed.';
       }

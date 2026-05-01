@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
@@ -133,7 +133,7 @@ interface KpiResult {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule,
+    
     RowComponent,
     ColComponent,
     CardComponent,

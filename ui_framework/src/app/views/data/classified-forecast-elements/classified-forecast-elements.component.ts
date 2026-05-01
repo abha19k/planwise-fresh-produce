@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
   CardComponent,
@@ -43,7 +43,7 @@ interface RowVM {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule,
+    
     TextColorDirective,
     TableDirective,
     CardComponent,

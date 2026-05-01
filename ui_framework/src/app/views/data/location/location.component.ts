@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ButtonDirective, CardBodyComponent, CardComponent, CardFooterComponent, CardHeaderComponent, ColComponent,
   RowComponent, TableDirective, TextColorDirective
@@ -28,7 +28,7 @@ type LocationField = 'LocationID' | 'LocationDescr' | 'Level' | 'IsActive';
   templateUrl: 'location.component.html',
   styleUrls: ['location.component.scss'],
   imports: [
-    CommonModule, ReactiveFormsModule, HttpClientModule,
+    CommonModule, ReactiveFormsModule,
     TextColorDirective, CardComponent, CardBodyComponent, CardHeaderComponent, CardFooterComponent,
     RowComponent, ColComponent, ButtonDirective, IconDirective, TableDirective
   ]
