@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, UploadFile, File
 from sqlalchemy import text
 from core.db import ENGINE, get_engine, _qualified
 from core.config import DEFAULT_SCHEMA
 from services.audit_service import write_audit_log
+import os
 
 from models.auth import (
     LoginRequest,
@@ -81,6 +82,7 @@ def api_login(
             "role": user["role"],
             "roles": user.get("roles", []),
             "is_active": user["is_active"],
+            "profile_image_url": user.get("profile_image_url"),
         },
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -147,6 +149,7 @@ def api_me(user=Depends(get_current_user)):
         "full_name": user.get("full_name"),
         "role": user["role"],
         "roles": user.get("roles", []),
+        "profile_image_url": user.get("profile_image_url"),
         "is_active": user["is_active"],
     }
 
@@ -173,6 +176,7 @@ def api_create_user(
         raise HTTPException(status_code=400, detail="Email already exists")
 
     password_hash = hash_password(body.password)
+
 
     insert_user_sql = text(f"""
         INSERT INTO {_qualified(db_schema, "users")}
@@ -229,5 +233,38 @@ def api_create_user(
             "role": body.role,
             "roles": [body.role],
             "is_active": user_row["is_active"],
+            "profile_image_url": None,
         },
     }
+
+@router.post("/api/users/{user_id}/upload-avatar")
+def upload_avatar(
+    user_id: str,
+    file: UploadFile = File(...),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner")),
+):
+    _ensure_engine()
+
+    folder = "uploads/avatars"
+    os.makedirs(folder, exist_ok=True)
+
+    filename = f"{user_id}_{file.filename}"
+    filepath = os.path.join(folder, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(file.file.read())
+
+    url = f"/uploads/avatars/{filename}"
+
+    sql = text(f"""
+        UPDATE {_qualified(db_schema, "users")}
+        SET profile_image_url = :url
+        WHERE id = :user_id
+    """)
+
+    with ENGINE.begin() as conn:
+        conn.execute(sql, {"url": url, "user_id": user_id})
+
+    return {"ok": True, "url": url}
+

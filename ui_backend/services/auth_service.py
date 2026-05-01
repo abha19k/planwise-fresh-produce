@@ -85,6 +85,7 @@ def get_user_by_email(
       email,
       password_hash,
       full_name,
+      profile_image_url,
       is_active,
       created_at,
       failed_login_attempts,
@@ -98,7 +99,7 @@ def get_user_by_email(
     with ENGINE.begin() as conn:
         row = conn.execute(sql, {"email": email}).mappings().first()
 
-    return dict(row) if row else None
+    return dict(row) if row is not None else None
 
 
 def get_user_roles(
