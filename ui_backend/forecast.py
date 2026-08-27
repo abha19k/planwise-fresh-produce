@@ -722,17 +722,25 @@ def run_one_job_df(
     horizon: int,
     weather_daily: pd.DataFrame,
     promos: pd.DataFrame,
-    tag: str,  # kept for logging / traceability
+    tag: str,
 
-
-    # DB output (recommended)
     db_engine: Optional[Engine] = None,
     db_schema: Optional[str] = None,
     level: Optional[str] = None,
     scenario_id: int = 1,
     write_to_db: bool = True,
 
-    # optional: also return results to caller
+    # performance
+    run_backtest: bool = False,
+
+    # False for interactive Run Forecast.
+    # True for full/save/run-all forecasts.
+    run_baseline: bool = True,
+
+    # If supplied, train globally but forecast only this series.
+    # (ProductID, ChannelID, LocationID)
+    forecast_key: Optional[Tuple[str, str, str]] = None,
+
     return_frames: bool = False,
 ):
     """
@@ -795,54 +803,160 @@ def run_one_job_df(
     rolls = cfg["rolls"]
     min_train = cfg["min_train_points"]
 
-    # train global baseline + feature models (stacked series)
+    # ============================================================
+    # TRAIN GLOBAL MODEL(S)
+    #
+    # Feature model always uses ALL eligible series.
+    # Baseline can be skipped for interactive Forecast Tuning.
+    # ============================================================
+
     frames_base = []
     frames_feat = []
+
     for _, g in df_exog.groupby(KEY_COLS):
         g = g.sort_values("StartDate_dt")
+
         if len(g) < max(lags + rolls) + 10:
             continue
+
         if len(g) < min_train:
             continue
-        frames_base.append(build_supervised_frame(g, period, lags, rolls, use_exog=False))
-        frames_feat.append(build_supervised_frame(g, period, lags, rolls, use_exog=True))
 
-    if not frames_base or not frames_feat:
-        return {"ok": False, "tag": tag, "reason": "not enough history to train global models"}
+        if run_baseline:
+            frames_base.append(
+                build_supervised_frame(
+                    g, period, lags, rolls, use_exog=False
+                )
+            )
 
-    train_base = pd.concat(frames_base, ignore_index=True)
+        frames_feat.append(
+            build_supervised_frame(
+                g, period, lags, rolls, use_exog=True
+            )
+        )
+
+
+    if not frames_feat:
+        return {
+            "ok": False,
+            "tag": tag,
+            "reason": "not enough history to train global feature model"
+        }
+
+
+    # Feature model: always required
     train_feat = pd.concat(frames_feat, ignore_index=True)
-
-    model_base, cols_base = train_model(train_base)
     model_feat, cols_feat = train_model(train_feat)
 
-    # forecast all series
+
+    # Baseline model: optional
+    model_base = None
+    cols_base = []
+
+    if run_baseline:
+
+        if not frames_base:
+            return {
+                "ok": False,
+                "tag": tag,
+                "reason": "not enough history to train global baseline model"
+            }
+
+        train_base = pd.concat(frames_base, ignore_index=True)
+        model_base, cols_base = train_model(train_base)
+
+    
+    # ============================================================
+    # FORECAST
+    #
+    # forecast_key=None:
+    #     forecast every eligible series
+    #
+    # forecast_key=(ProductID, ChannelID, LocationID):
+    #     global model was still trained on ALL series,
+    #     but forecast only the selected series.
+    # ============================================================
+
     out_base = []
     out_feat = []
-    for _, g in df_exog.groupby(KEY_COLS):
+
+    normalized_forecast_key = None
+
+    if forecast_key is not None:
+        normalized_forecast_key = tuple(
+            str(x).strip() for x in forecast_key
+        )
+
+
+    for keys, g in df_exog.groupby(KEY_COLS):
+
+        normalized_keys = tuple(
+            str(x).strip() for x in keys
+        )
+
+        # Interactive forecast:
+        # ignore every series except the selected one.
+        if (
+            normalized_forecast_key is not None
+            and normalized_keys != normalized_forecast_key
+        ):
+            continue
+
         g = g.sort_values("StartDate_dt").copy()
+
         if len(g) < min_train:
             continue
 
-        out_base.append(
-            forecast_one_series(
-                hist=g, period=period, horizon=horizon, lags=lags, rolls=rolls,
-                model=model_base, feature_cols=cols_base, use_exog=False,
-                weather_hist_agg=weather_hist_agg, clim_map=clim_map,
-                promo_agg=promo_agg, promo_clim=promo_clim,
+        # Baseline is optional
+        if run_baseline and model_base is not None:
+            out_base.append(
+                forecast_one_series(
+                    hist=g,
+                    period=period,
+                    horizon=horizon,
+                    lags=lags,
+                    rolls=rolls,
+                    model=model_base,
+                    feature_cols=cols_base,
+                    use_exog=False,
+                    weather_hist_agg=weather_hist_agg,
+                    clim_map=clim_map,
+                    promo_agg=promo_agg,
+                    promo_clim=promo_clim,
+                )
             )
-        )
+
+        # Feature forecast
         out_feat.append(
             forecast_one_series(
-                hist=g, period=period, horizon=horizon, lags=lags, rolls=rolls,
-                model=model_feat, feature_cols=cols_feat, use_exog=True,
-                weather_hist_agg=weather_hist_agg, clim_map=clim_map,
-                promo_agg=promo_agg, promo_clim=promo_clim,
+                hist=g,
+                period=period,
+                horizon=horizon,
+                lags=lags,
+                rolls=rolls,
+                model=model_feat,
+                feature_cols=cols_feat,
+                use_exog=True,
+                weather_hist_agg=weather_hist_agg,
+                clim_map=clim_map,
+                promo_agg=promo_agg,
+                promo_clim=promo_clim,
             )
         )
 
-    fc_base = pd.concat(out_base, ignore_index=True) if out_base else pd.DataFrame()
-    fc_feat = pd.concat(out_feat, ignore_index=True) if out_feat else pd.DataFrame()
+
+    fc_base = (
+        pd.concat(out_base, ignore_index=True)
+        if out_base
+        else pd.DataFrame()
+    )
+
+    fc_feat = (
+        pd.concat(out_feat, ignore_index=True)
+        if out_feat
+        else pd.DataFrame()
+    )
+
 
     # DB write (recommended)
     db_results = {}
@@ -851,29 +965,89 @@ def run_one_job_df(
             raise ValueError("write_to_db=True requires db_engine, db_schema, and level.")
         t_base = _forecast_table_name(level, period, baseline=True)
         t_feat = _forecast_table_name(level, period, baseline=False)
-        db_results["baseline"] = write_forecast_df_to_db(db_engine, db_schema, t_base, fc_base, scenario_id=scenario_id)
-        db_results["feat"]     = write_forecast_df_to_db(db_engine, db_schema, t_feat, fc_feat, scenario_id=scenario_id)
+        if run_baseline and not fc_base.empty:
+            db_results["baseline"] = write_forecast_df_to_db(
+                db_engine,
+                db_schema,
+                t_base,
+                fc_base,
+                scenario_id=scenario_id,
+            )
 
-    # backtest summary (in-memory)
-    bt_h = BACKTEST_CFG[period]["bt_horizon"]
-    bt_base = rolling_backtest(
-        df_exog, period, bt_h, use_exog=False,
-        weather_hist_agg=weather_hist_agg, clim_map=clim_map,
-        promo_agg=promo_agg, promo_clim=promo_clim
-    )
-    bt_feat = rolling_backtest(
-        df_exog, period, bt_h, use_exog=True,
-        weather_hist_agg=weather_hist_agg, clim_map=clim_map,
-        promo_agg=promo_agg, promo_clim=promo_clim
-    )
+        if not fc_feat.empty:
+            db_results["feat"] = write_forecast_df_to_db(
+                db_engine,
+                db_schema,
+                t_feat,
+                fc_feat,
+                scenario_id=scenario_id,
+            )
+
+    # ============================================================
+    # BACKTEST
+    # Do NOT run this during normal interactive forecasting.
+    # Rolling backtesting repeatedly trains XGBoost models and is
+    # considerably more expensive than producing the forecast.
+    # ============================================================
 
     summary = pd.DataFrame()
-    if (not bt_base.empty) and (not bt_feat.empty):
-        bsum = bt_base.groupby(KEY_COLS, as_index=False)["WMAPE"].mean().rename(columns={"WMAPE": "WMAPE_base"})
-        fsum = bt_feat.groupby(KEY_COLS, as_index=False)["WMAPE"].mean().rename(columns={"WMAPE": "WMAPE_feat"})
-        summary = bsum.merge(fsum, on=KEY_COLS, how="inner")
-        summary["Series"] = summary["ProductID"] + " | " + summary["ChannelID"] + " | " + summary["LocationID"]
-        summary["bt_horizon"] = bt_h
+
+    if run_backtest:
+        bt_h = BACKTEST_CFG[period]["bt_horizon"]
+
+        bt_base = rolling_backtest(
+            df_exog,
+            period,
+            bt_h,
+            use_exog=False,
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        bt_feat = rolling_backtest(
+            df_exog,
+            period,
+            bt_h,
+            use_exog=True,
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        if (not bt_base.empty) and (not bt_feat.empty):
+
+            bsum = (
+                bt_base
+                .groupby(KEY_COLS, as_index=False)["WMAPE"]
+                .mean()
+                .rename(columns={"WMAPE": "WMAPE_base"})
+            )
+
+            fsum = (
+                bt_feat
+                .groupby(KEY_COLS, as_index=False)["WMAPE"]
+                .mean()
+                .rename(columns={"WMAPE": "WMAPE_feat"})
+            )
+
+            summary = bsum.merge(
+                fsum,
+                on=KEY_COLS,
+                how="inner"
+            )
+
+            summary["Series"] = (
+                summary["ProductID"]
+                + " | "
+                + summary["ChannelID"]
+                + " | "
+                + summary["LocationID"]
+            )
+
+            summary["bt_horizon"] = bt_h
 
     result = {
         "ok": True,

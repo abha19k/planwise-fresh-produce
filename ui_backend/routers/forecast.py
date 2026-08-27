@@ -293,6 +293,19 @@ def run_one_db(
         )
         promo_df = _normalize_promo_cols(promo_df)
 
+        forecast_key = None
+
+        if (
+            req.product_id
+            and req.channel_id
+            and req.location_id
+        ):
+            forecast_key = (
+                req.product_id,
+                req.channel_id,
+                req.location_id,
+            )
+
         result = forecast.run_one_job_df(
             hist_df=hist_df,
             period=period,
@@ -305,8 +318,19 @@ def run_one_db(
             level=level,
             scenario_id=req.scenario_id,
             write_to_db=req.save_to_db,
+
+            run_backtest=False,
+
+            # Interactive Run Forecast:
+            # don't waste time training the baseline model.
+            run_baseline=req.save_to_db,
+
+            # Global training, selected-series forecasting
+            forecast_key=forecast_key,
+
             return_frames=(not req.save_to_db),
         )
+
 
         write_audit_log(
             action="forecast.run_one",
@@ -425,8 +449,11 @@ def run_all_db(
                 db_schema=schema,
                 level=level,
                 write_to_db=True,
+                run_backtest=False,
                 return_frames=False,
             )
+
+
 
             results.append({
                 "level": level,

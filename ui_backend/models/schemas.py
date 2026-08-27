@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-
 class RunOneDBRequest(BaseModel):
     db_schema: str = Field(default="planwise_fresh_produce")
     scenario_id: int = Field(default=1, ge=1)
@@ -12,6 +11,11 @@ class RunOneDBRequest(BaseModel):
     level: Optional[str] = Field(default=None, description="e.g. 111 / 121 / 221")
     period: str = Field(..., description="Daily / Weekly / Monthly")
     horizon: int = Field(..., ge=1)
+
+    # Optional selected series for interactive Forecast Tuning
+    product_id: Optional[str] = None
+    channel_id: Optional[str] = None
+    location_id: Optional[str] = None
 
     history_table: Optional[str] = Field(
         default=None,
@@ -22,6 +26,8 @@ class RunOneDBRequest(BaseModel):
     promo_table: str = Field(default="promotions")
     tag: Optional[str] = Field(default=None, description="Output tag used in filenames")
     save_to_db: bool = True
+
+
 
 
 class RunAllDBRequest(BaseModel):

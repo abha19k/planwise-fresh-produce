@@ -352,19 +352,27 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     const level = this.getLevel();
     const period = this.getPeriod();
     const horizon = Math.max(1, Number(this.horizonCtrl.value ?? 1));
+    const key = this.getSelectedKey();
 
     return {
-      db_schema: this.DB_SCHEMA,
-      scenario_id: this.currentScenarioId,
-      level,
-      period,
-      horizon,
-      weather_table: 'weather_daily',
-      promo_table: 'promotions',
-      tag: `${level}_${period}_scenario_${this.currentScenarioId}`,
-      save_to_db: saveToDb
+        db_schema: this.DB_SCHEMA,
+        scenario_id: this.currentScenarioId,
+        level,
+        period,
+        horizon,
+
+        // Selected series for fast interactive forecasting
+        product_id: key?.ProductID ?? null,
+        channel_id: key?.ChannelID ?? null,
+        location_id: key?.LocationID ?? null,
+
+        weather_table: 'weather_daily',
+        promo_table: 'promotions',
+        tag: `${level}_${period}_scenario_${this.currentScenarioId}`,
+        save_to_db: saveToDb
     };
   }
+
 
   private runForecastJob(saveToDb: boolean) {
     const body = this.buildRunOneDbBody(saveToDb);
