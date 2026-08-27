@@ -1,0 +1,15 @@
+﻿ChannelID,ChannelDescr,Level,IsActive
+CH_ALL,All Channels,3,TRUE
+RETAIL,Retail,2,TRUE
+WHOLESALE,Wholesale,2,TRUE
+ONLINE,Online,2,TRUE
+AH,Albert Heijn,1,TRUE
+JUMBO,Jumbo,1,TRUE
+PLUS,Plus,1,TRUE
+SLIGRO,Sligro,1,TRUE
+HOLLANDFOODSERVICE,Holland Food Service,1,TRUE
+GREENACRES,Green Acres,1,TRUE
+MELEDI,Meledi,1,TRUE
+PICNIC,Picnic,1,TRUE
+HELLOFRESH,HelloFresh,1,TRUE
+FLINK,Flink,1,TRUE

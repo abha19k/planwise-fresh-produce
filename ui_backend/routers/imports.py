@@ -94,14 +94,6 @@ def import_history_excel(
     if missing:
         raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
 
-    table_name = {
-        "Daily": "history_daily",
-        "Weekly": "history_weekly",
-        "Monthly": "history_monthly",
-    }[p]
-
-    table_qual = _qualified(db_schema, table_name)
-
     payload: List[Dict[str, Any]] = []
 
     for _, r in df.iterrows():
@@ -128,32 +120,62 @@ def import_history_excel(
     if not payload:
         return {"ok": True, "rows_inserted": 0, "message": "No valid rows found"}
 
-    sql = text(f"""
-        INSERT INTO {table_qual}
-          ("ProductID","ChannelID","LocationID","StartDate","EndDate","Period",
-           "Qty","NetPrice","ListPrice","Level","Type")
-        VALUES
-          (:ProductID,:ChannelID,:LocationID,
-           CAST(:StartDate AS date), CAST(:EndDate AS date),
-           :Period,:Qty,:NetPrice,:ListPrice,:Level,:Type)
-    """)
+    period_slug = p.lower()
+
+    rows_by_level: Dict[str, List[Dict[str, Any]]] = {}
+    for row in payload:
+        level = str(row.get("Level", "")).strip()
+        if not level:
+            raise HTTPException(status_code=400, detail="Every row must have Level.")
+
+        rows_by_level.setdefault(level, []).append(row)
+
+        
+    sql_template = """
+      INSERT INTO {table_qual}
+        ("ProductID","ChannelID","LocationID","StartDate","EndDate","Period",
+        "Qty","NetPrice","ListPrice","Type")
+      VALUES
+        (:ProductID,:ChannelID,:LocationID,
+        CAST(:StartDate AS date), CAST(:EndDate AS date),
+        :Period,:Qty,:NetPrice,:ListPrice,:Type)
+      ON CONFLICT ("ProductID","ChannelID","LocationID","StartDate","EndDate","Period")
+      DO UPDATE SET
+        "Qty" = EXCLUDED."Qty",
+        "NetPrice" = EXCLUDED."NetPrice",
+        "ListPrice" = EXCLUDED."ListPrice",
+        "Type" = EXCLUDED."Type"
+    """
+
+
+    total_inserted = 0
+    inserted_tables: List[str] = []
 
     try:
         with ENGINE.begin() as conn:
             chunk_size = 5000
-            for i in range(0, len(payload), chunk_size):
-                conn.execute(sql, payload[i:i + chunk_size])
+
+            for level, level_rows in rows_by_level.items():
+                table_name = f"history_{level}_{period_slug}"
+                table_qual = _qualified(db_schema, table_name)
+                sql = text(sql_template.format(table_qual=table_qual))
+
+                for i in range(0, len(level_rows), chunk_size):
+                    conn.execute(sql, level_rows[i:i + chunk_size])
+
+                total_inserted += len(level_rows)
+                inserted_tables.append(table_name)
 
         write_audit_log(
             action="history.import_excel",
             entity="history",
             user_id=str(current_user["id"]),
-            entity_id=f"{table_name}",
+            entity_id=",".join(inserted_tables),
             details={
                 "filename": file.filename,
                 "period": p,
-                "rows_inserted": len(payload),
-                "table": table_name,
+                "rows_inserted": total_inserted,
+                "tables": inserted_tables,
             },
             db_schema=db_schema,
         )
@@ -161,8 +183,8 @@ def import_history_excel(
         return {
             "ok": True,
             "period": p,
-            "table": table_name,
-            "rows_inserted": len(payload),
+            "tables": inserted_tables,
+            "rows_inserted": total_inserted,
         }
 
     except Exception as e:

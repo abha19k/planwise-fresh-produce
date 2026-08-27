@@ -11,6 +11,7 @@ from sqlalchemy import text
 from services.auth_service import require_roles
 import forecast
 from services.audit_service import write_audit_log
+import json
 
 from core.db import ENGINE, get_engine, _qident, _qualified
 from core.config import (
@@ -337,11 +338,32 @@ def run_one_db(
         }
 
         if not req.save_to_db:
-            feat_df = result.get("forecast_feat_df")
-            base_df = result.get("forecast_baseline_df")
+            feat_df = result.get("fc_feat")
+            base_df = result.get("fc_base")
 
-            response["forecast_feat_rows"] = feat_df.to_dict(orient="records") if feat_df is not None else []
-            response["forecast_baseline_rows"] = base_df.to_dict(orient="records") if base_df is not None else []
+            response["forecast_feat_rows"] = (
+                json.loads(
+                    feat_df.to_json(
+                        orient="records",
+                        date_format="iso"
+                    )
+                )
+                if feat_df is not None and not feat_df.empty
+                else []
+            )
+
+            response["forecast_baseline_rows"] = (
+                json.loads(
+                    base_df.to_json(
+                        orient="records",
+                        date_format="iso"
+                    )
+                )
+                if base_df is not None and not base_df.empty
+                else []
+            )
+
+
 
         return response
 

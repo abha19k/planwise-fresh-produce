@@ -102,14 +102,20 @@ interface Point {
   y: number;
 }
 
+
 interface RunOneDbResponse {
   ok: boolean;
   scenario_id: number;
   message: string;
   tag: string;
   db_result?: any;
+
   rows_baseline?: number;
   rows_feat?: number;
+
+  forecast_feat_rows?: ForecastRow[];
+  forecast_baseline_rows?: ForecastRow[];
+
   backtest_rows?: number;
   mean_wmape_base?: number;
   mean_wmape_feat?: number;
@@ -516,41 +522,78 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
     this.errorMessage = '';
     this.metrics = null;
     this.tuneResult = null;
-
+  
     const key = this.getSelectedKey();
+  
     if (!key) {
-      this.errorMessage = 'Select ProductID, ChannelID and LocationID.';
+      this.errorMessage =
+        'Select ProductID, ChannelID and LocationID.';
       return;
     }
-
+  
     this.loading = true;
     this.clearQuerySeries();
-
+  
     this.loadHistoryByKeys([key], 2000)
       .pipe(
         tap((hist) => {
           this.histSeries = this.toHistorySeries(hist);
+          this.fcSeries = [];
           this.renderChart();
         }),
+  
         switchMap(() => this.runForecastJob(save)),
-        tap((runRes) => {
-          this.tuneResult = runRes;
-        }),
+  
         switchMap((runRes) => {
           if (!runRes?.ok) {
-            throw new Error(runRes?.message || 'Forecast run failed');
+            throw new Error(
+              runRes?.message || 'Forecast run failed'
+            );
           }
-
+  
+          this.tuneResult = runRes;
+  
+          // RUN FORECAST:
+          // use forecast returned directly from Python.
+          if (!save) {
+            const rows = runRes.forecast_feat_rows ?? [];
+  
+            const selectedRows = rows.filter(
+              (r) =>
+                r.ProductID === key.ProductID &&
+                r.ChannelID === key.ChannelID &&
+                r.LocationID === key.LocationID
+            );
+  
+            this.fcSeries =
+              this.toForecastSeries(selectedRows);
+  
+            this.renderChart();
+  
+            return of(null);
+          }
+  
+          // SAVE FORECAST:
+          // forecast was persisted, so read it from DB.
           return this.loadForecastForKey(key, 'feat');
         }),
-        finalize(() => (this.loading = false)),
-        catchError((err) => this.fail(err, []))
+  
+        tap((fc) => {
+          if (fc) {
+            this.fcSeries = this.toForecastSeries(fc);
+            this.renderChart();
+          }
+        }),
+  
+        finalize(() => {
+          this.loading = false;
+        }),
+  
+        catchError((err) => this.fail(err, null))
       )
-      .subscribe((fc) => {
-        this.fcSeries = this.toForecastSeries(fc);
-        this.renderChart();
-      });
+      .subscribe();
   }
+
 
   runBacktest(): void {
     this.errorMessage = 'Backtest not wired in this TS (needs backend endpoint).';
