@@ -602,6 +602,398 @@ def rolling_backtest(
 
     return pd.DataFrame(rows)
 
+def rolling_backtest_selected_key(
+    df_exog: pd.DataFrame,
+    period: str,
+    forecast_key: Tuple[str, str, str],
+    use_exog: bool,
+    weather_hist_agg: pd.DataFrame,
+    clim_map: Dict[Tuple[str, int], Dict[str, float]],
+    promo_agg: pd.DataFrame,
+    promo_clim: Dict[Tuple[str, str, str, int], Dict[str, float]],
+) -> Dict[str, object]:
+    """
+    Rolling-origin backtest for ONE selected forecast element.
+
+    Important:
+    - Models are trained globally using all eligible series available
+      before each historical cutoff.
+    - Only forecast_key is evaluated.
+    - Nothing is written to the database.
+    - Returns historical Actual vs Forecast rows plus KPI metrics.
+    """
+
+    if period not in GRAIN_CFG:
+        raise ValueError(f"Invalid period: {period}")
+
+    cfg = GRAIN_CFG[period]
+
+    lags = cfg["lags"]
+    rolls = cfg["rolls"]
+    min_train = cfg["min_train_points"]
+
+    bt_cfg = BACKTEST_CFG[period]
+
+    n_folds = bt_cfg["n_folds"]
+    step = bt_cfg["step"]
+    bt_horizon = bt_cfg["bt_horizon"]
+
+    selected_key = tuple(
+        str(x).strip()
+        for x in forecast_key
+    )
+
+    # --------------------------------------------------------
+    # Locate selected series
+    # --------------------------------------------------------
+
+    selected_mask = (
+        (df_exog["ProductID"].astype(str).str.strip() == selected_key[0])
+        & (df_exog["ChannelID"].astype(str).str.strip() == selected_key[1])
+        & (df_exog["LocationID"].astype(str).str.strip() == selected_key[2])
+    )
+
+    selected = (
+        df_exog.loc[selected_mask]
+        .sort_values("StartDate_dt")
+        .copy()
+    )
+
+    if selected.empty:
+        return {
+            "ok": False,
+            "reason": "Selected forecast element was not found.",
+            "forecast_key": selected_key,
+            "rows": [],
+            "n": 0,
+            "wape": None,
+            "accuracy": None,
+            "bias_pct": None,
+        }
+
+    if len(selected) < min_train + bt_horizon + 5:
+        return {
+            "ok": False,
+            "reason": (
+                "Not enough history for selected forecast element. "
+                f"Rows={len(selected)}, minimum training={min_train}, "
+                f"backtest horizon={bt_horizon}."
+            ),
+            "forecast_key": selected_key,
+            "rows": [],
+            "n": 0,
+            "wape": None,
+            "accuracy": None,
+            "bias_pct": None,
+        }
+
+    # --------------------------------------------------------
+    # Determine historical cutoffs using selected series
+    # --------------------------------------------------------
+
+    max_end = len(selected) - bt_horizon
+
+    cutoffs = []
+    cur = max_end
+
+    for _ in range(n_folds):
+        cutoffs.append(cur)
+        cur -= step
+
+    cutoffs = [
+        cutoff
+        for cutoff in reversed(cutoffs)
+        if cutoff > min_train
+    ]
+
+    if not cutoffs:
+        return {
+            "ok": False,
+            "reason": "No valid backtest cutoffs available.",
+            "forecast_key": selected_key,
+            "rows": [],
+            "n": 0,
+            "wape": None,
+            "accuracy": None,
+            "bias_pct": None,
+        }
+
+    result_rows = []
+
+    # --------------------------------------------------------
+    # Rolling-origin folds
+    # --------------------------------------------------------
+
+    for fold_no, cutoff in enumerate(cutoffs, start=1):
+
+        train_selected = selected.iloc[:cutoff].copy()
+
+        test_selected = selected.iloc[
+            cutoff:cutoff + bt_horizon
+        ].copy()
+
+        if train_selected.empty or test_selected.empty:
+            continue
+
+        cutoff_date = pd.Timestamp(
+            train_selected["StartDate_dt"].max()
+        )
+
+        # ----------------------------------------------------
+        # Global training dataset
+        #
+        # Critical:
+        # only data available at this historical cutoff is
+        # allowed into the model.
+        # ----------------------------------------------------
+
+        global_train = df_exog[
+            df_exog["StartDate_dt"] <= cutoff_date
+        ].copy()
+
+        frames = []
+
+        for _, g in global_train.groupby(KEY_COLS):
+
+            g = (
+                g.sort_values("StartDate_dt")
+                .copy()
+            )
+
+            if len(g) < max(lags + rolls) + 10:
+                continue
+
+            if len(g) < min_train:
+                continue
+
+            frame = build_supervised_frame(
+                g,
+                period,
+                lags,
+                rolls,
+                use_exog=use_exog,
+            )
+
+            if not frame.empty:
+                frames.append(frame)
+
+        if not frames:
+            continue
+
+        train_frame = pd.concat(
+            frames,
+            ignore_index=True,
+        )
+
+        if len(train_frame) < 15:
+            continue
+
+        # ----------------------------------------------------
+        # Train global model for this historical cutoff
+        # ----------------------------------------------------
+
+        model, feature_cols = train_model(
+            train_frame
+        )
+
+        # ----------------------------------------------------
+        # Forecast only selected series
+        # ----------------------------------------------------
+
+        fc = forecast_one_series(
+            hist=train_selected,
+            period=period,
+            horizon=len(test_selected),
+            lags=lags,
+            rolls=rolls,
+            model=model,
+            feature_cols=feature_cols,
+            use_exog=use_exog,
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        if fc.empty:
+            continue
+
+        fc["StartDate_dt"] = pd.to_datetime(
+            fc["StartDate"],
+            errors="coerce",
+        )
+
+        actual = test_selected[
+            ["StartDate_dt", "Qty"]
+        ].copy()
+
+        merged = actual.merge(
+            fc[
+                [
+                    "StartDate_dt",
+                    "ForecastQty",
+                ]
+            ],
+            on="StartDate_dt",
+            how="inner",
+        )
+
+        if merged.empty:
+            continue
+
+        # ----------------------------------------------------
+        # Preserve individual historical predictions
+        # ----------------------------------------------------
+
+        for _, row in merged.iterrows():
+
+            actual_qty = float(row["Qty"])
+            forecast_qty = float(
+                row["ForecastQty"]
+            )
+
+            result_rows.append({
+                "ProductID": selected_key[0],
+                "ChannelID": selected_key[1],
+                "LocationID": selected_key[2],
+                "Period": period,
+                "Fold": fold_no,
+                "StartDate": pd.Timestamp(
+                    row["StartDate_dt"]
+                ).date().isoformat(),
+                "ActualQty": actual_qty,
+                "ForecastQty": forecast_qty,
+                "Error": forecast_qty - actual_qty,
+                "AbsError": abs(
+                    forecast_qty - actual_qty
+                ),
+            })
+
+    # --------------------------------------------------------
+    # No successful folds
+    # --------------------------------------------------------
+
+    if not result_rows:
+
+        return {
+            "ok": False,
+            "reason": (
+                "Backtest did not produce any matched "
+                "historical forecast observations."
+            ),
+            "forecast_key": selected_key,
+            "rows": [],
+            "n": 0,
+            "wape": None,
+            "accuracy": None,
+            "bias_pct": None,
+        }
+
+    # --------------------------------------------------------
+    # KPI calculation
+    # --------------------------------------------------------
+
+    result_df = pd.DataFrame(
+        result_rows
+    )
+
+    actual_values = (
+        result_df["ActualQty"]
+        .astype(float)
+        .to_numpy()
+    )
+
+    forecast_values = (
+        result_df["ForecastQty"]
+        .astype(float)
+        .to_numpy()
+    )
+
+    abs_actual_sum = float(
+        np.sum(np.abs(actual_values))
+    )
+
+    abs_error_sum = float(
+        np.sum(
+            np.abs(
+                forecast_values
+                - actual_values
+            )
+        )
+    )
+
+    error_sum = float(
+        np.sum(
+            forecast_values
+            - actual_values
+        )
+    )
+
+    if abs_actual_sum > 1e-12:
+
+        wape_pct = (
+            abs_error_sum
+            / abs_actual_sum
+            * 100.0
+        )
+
+        bias_pct = (
+            error_sum
+            / abs_actual_sum
+            * 100.0
+        )
+
+    else:
+        wape_pct = None
+        bias_pct = None
+
+    accuracy = (
+        max(
+            0.0,
+            100.0 - wape_pct,
+        )
+        if wape_pct is not None
+        else None
+    )
+
+    return {
+        "ok": True,
+
+        "forecast_key": {
+            "ProductID": selected_key[0],
+            "ChannelID": selected_key[1],
+            "LocationID": selected_key[2],
+        },
+
+        "period": period,
+
+        "folds": int(
+            result_df["Fold"].nunique()
+        ),
+
+        "n": int(len(result_df)),
+
+        "wape": (
+            float(wape_pct)
+            if wape_pct is not None
+            else None
+        ),
+
+        "accuracy": (
+            float(accuracy)
+            if accuracy is not None
+            else None
+        ),
+
+        "bias_pct": (
+            float(bias_pct)
+            if bias_pct is not None
+            else None
+        ),
+
+        "rows": result_rows,
+    }
+
 
 # ============================================================
 # DB WRITE HELPERS

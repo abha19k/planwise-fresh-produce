@@ -121,6 +121,44 @@ interface RunOneDbResponse {
   mean_wmape_feat?: number;
 }
 
+interface BacktestRow {
+  ProductID: string;
+  ChannelID: string;
+  LocationID: string;
+  Period: string;
+  Fold: number;
+  StartDate: string;
+  ActualQty: number;
+  ForecastQty: number;
+  Error: number;
+  AbsError: number;
+}
+
+interface SelectedBacktestResponse {
+  scenario_id: number;
+  level: string;
+  variant: string;
+  ok: boolean;
+
+  forecast_key: {
+    ProductID: string;
+    ChannelID: string;
+    LocationID: string;
+  };
+
+  period: string;
+  folds: number;
+  n: number;
+
+  wape: number | null;
+  accuracy: number | null;
+  bias_pct: number | null;
+
+  rows: BacktestRow[];
+
+  reason?: string;
+}
+
 @Component({
   selector: 'app-forecast-tuning',
   standalone: true,
@@ -603,8 +641,99 @@ export class ForecastTuningComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
 
+
+
   runBacktest(): void {
-    this.errorMessage = 'Backtest not wired in this TS (needs backend endpoint).';
+    this.errorMessage = '';
+    this.metrics = null;
+    this.tuneResult = null;
+  
+    const key = this.getSelectedKey();
+  
+    if (!key) {
+      this.errorMessage =
+        'Select ProductID, ChannelID and LocationID.';
+      return;
+    }
+  
+    const params = this.baseParams()
+      .set('productid', key.ProductID)
+      .set('channelid', key.ChannelID)
+      .set('locationid', key.LocationID)
+      .set('period', this.getPeriod())
+      .set('level', this.getLevel())
+      .set('variant', 'feat');
+  
+    this.loading = true;
+    this.clearQuerySeries();
+  
+    this.http
+      .get<SelectedBacktestResponse>(
+        `${this.apiBase}/api/forecast/backtest-selected`,
+        { params }
+      )
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        }),
+  
+        catchError((err) => {
+          return this.fail(err, null);
+        })
+      )
+      .subscribe((res) => {
+        if (!res) {
+          return;
+        }
+  
+        if (!res.ok) {
+          this.errorMessage =
+            res.reason || 'Backtest failed.';
+          return;
+        }
+  
+        // Store complete backend result.
+        this.tuneResult = res;
+  
+        // ------------------------------------------------
+        // KPI metrics
+        // ------------------------------------------------
+  
+        this.metrics = {
+          WAPE: Number(res.wape ?? 0),
+          Accuracy: Number(res.accuracy ?? 0),
+          Bias: Number(res.bias_pct ?? 0),
+          N: Number(res.n ?? 0),
+          Folds: Number(res.folds ?? 0),
+        };
+  
+        // ------------------------------------------------
+        // Plot historical Actual vs backtest Forecast
+        // ------------------------------------------------
+  
+
+
+        const rows: BacktestRow[] = Array.isArray(res.rows)
+          ? res.rows
+          : [];
+
+        this.histSeries = rows
+          .map((r: BacktestRow): Point => ({
+            x: String(r.StartDate),
+            y: Number(r.ActualQty ?? 0),
+          }))
+          .sort((a: Point, b: Point) => a.x.localeCompare(b.x));
+        
+        this.fcSeries = rows
+          .map((r: BacktestRow): Point => ({
+            x: String(r.StartDate),
+            y: Number(r.ForecastQty ?? 0),
+          }))
+          .sort((a: Point, b: Point) => a.x.localeCompare(b.x));
+  
+  
+        this.renderChart();
+      });
   }
 
   tuneXgb(): void {

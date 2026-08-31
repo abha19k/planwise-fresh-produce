@@ -32,7 +32,9 @@ export class AuthService {
 
   user = signal<AuthUser | null>(this.loadUser());
 
-  isLoggedIn = computed(() => !!this.getAccessToken());
+  isLoggedIn(): boolean {
+    return this.hasValidAccessToken();
+  }
   role = computed(() => this.user()?.role ?? null);
   roles = computed(() => this.user()?.roles ?? []);
 
@@ -89,6 +91,59 @@ export class AuthService {
   hasAnyRole(allowedRoles: UserRole[]): boolean {
     const currentRoles = this.roles();
     return allowedRoles.some(role => currentRoles.includes(role));
+  }
+
+  private hasValidAccessToken(): boolean {
+    const token = this.getAccessToken();
+  
+    if (!token) {
+      return false;
+    }
+  
+    try {
+      const parts = token.split('.');
+  
+      if (parts.length !== 3) {
+        this.clearStoredSession();
+        return false;
+      }
+  
+      // JWT uses Base64URL rather than normal Base64
+      let base64 = parts[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+  
+      while (base64.length % 4) {
+        base64 += '=';
+      }
+  
+      const payload = JSON.parse(atob(base64));
+  
+      // No expiry in token
+      if (!payload.exp) {
+        return true;
+      }
+  
+      const expiresAt = payload.exp * 1000;
+  
+      if (Date.now() >= expiresAt) {
+        this.clearStoredSession();
+        return false;
+      }
+  
+      return true;
+  
+    } catch {
+      this.clearStoredSession();
+      return false;
+    }
+  }
+
+  private clearStoredSession(): void {
+    localStorage.removeItem(this.accessTokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
+    localStorage.removeItem(this.userKey);
+    this.user.set(null);
   }
 
   private loadUser(): AuthUser | null {

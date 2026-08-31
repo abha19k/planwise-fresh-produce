@@ -77,7 +77,11 @@
   <c-card-body>
     <div *ngIf="errorMessage" class="text-danger mb-2">{{ errorMessage }}</div>
 
-    <div *ngIf="tuneResult?.ok" class="alert alert-success mb-3">
+
+    <div
+      *ngIf="tuneResult?.ok && tuneResult?.message"
+      class="alert alert-success mb-3"
+    >
       {{ tuneResult.message }}
     </div>
 
@@ -105,28 +109,45 @@
     </div>
 
     <div *ngIf="metrics" class="mt-3">
-      <h6>Backtest metrics</h6>
+      <h6>Backtest Performance</h6>
+    
       <table cTable class="table-sm">
         <thead>
           <tr>
-            <th>MAE</th>
-            <th>RMSE</th>
-            <th>MAPE%</th>
-            <th>sMAPE%</th>
-            <th>WAPE%</th>
+            <th>Accuracy</th>
+            <th>WAPE</th>
+            <th>Bias</th>
+            <th>Observations</th>
+            <th>Folds</th>
           </tr>
         </thead>
+    
         <tbody>
           <tr>
-            <td>{{ metrics['MAE'] | number:'1.2-2' }}</td>
-            <td>{{ metrics['RMSE'] | number:'1.2-2' }}</td>
-            <td>{{ metrics['MAPE'] | number:'1.2-2' }}</td>
-            <td>{{ metrics['sMAPE'] | number:'1.2-2' }}</td>
-            <td>{{ metrics['WAPE'] | number:'1.2-2' }}</td>
+            <td>
+              {{ metrics['Accuracy'] | number:'1.1-1' }}%
+            </td>
+    
+            <td>
+              {{ metrics['WAPE'] | number:'1.1-1' }}%
+            </td>
+    
+            <td>
+              {{ metrics['Bias'] | number:'1.1-1' }}%
+            </td>
+    
+            <td>
+              {{ metrics['N'] | number:'1.0-0' }}
+            </td>
+    
+            <td>
+              {{ metrics['Folds'] | number:'1.0-0' }}
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
+
 
     <div *ngIf="tuneResult?.results?.length" class="mt-3">
       <h6>Top configs (by WAPE)</h6>

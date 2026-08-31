@@ -128,6 +128,386 @@ def api_forecast(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"/api/forecast failed: {e}")
 
+@router.get("/api/forecast/backtest-selected")
+def api_forecast_backtest_selected(
+    productid: str = Query(...),
+    channelid: str = Query(...),
+    locationid: str = Query(...),
+    period: str = Query("Weekly"),
+    level: str = Query("111"),
+    variant: str = Query("feat", description="baseline | feat"),
+    scenario_id: int = Query(1, ge=1),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
+    """
+    Backtest ONE selected forecast element.
+
+    Does not write forecasts to DB.
+    Does not affect normal Run Forecast / Save Forecast.
+    """
+
+    try:
+        _ensure_engine()
+
+        p = (period or "").strip()
+        lvl = str(level).strip()
+        v = (variant or "feat").strip().lower()
+
+        if p not in forecast.GRAIN_CFG:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid period: {p}"
+            )
+
+        if v not in ("baseline", "base", "feat"):
+            raise HTTPException(
+                status_code=400,
+                detail="variant must be baseline or feat"
+            )
+
+        # --------------------------------------------------
+        # Load scenario history
+        # --------------------------------------------------
+
+        hist_df = _get_history_with_fallback(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            level=lvl,
+            period=p,
+        )
+
+        if hist_df is None or hist_df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history found."
+            )
+
+        # --------------------------------------------------
+        # Weather
+        # --------------------------------------------------
+
+        weather_df = _scenario_weather_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_WEATHER_TABLE,
+        )
+
+        weather_df = _normalize_weather_cols(
+            weather_df
+        )
+
+        # --------------------------------------------------
+        # Promotions
+        # --------------------------------------------------
+
+        promo_df = _scenario_promotions_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_PROMO_TABLE,
+        )
+
+        promo_df = _normalize_promo_cols(
+            promo_df
+        )
+
+        # --------------------------------------------------
+        # Prepare history exactly as forecast.py expects
+        # --------------------------------------------------
+
+        df = hist_df.copy()
+
+        for c in forecast.KEY_COLS:
+            df[c] = (
+                df[c]
+                .astype(str)
+                .str.strip()
+            )
+
+        df["Qty"] = (
+            forecast.to_num(df["Qty"])
+            .fillna(0.0)
+        )
+
+        if "NetPrice" not in df.columns:
+            df["NetPrice"] = None
+
+        if "ListPrice" not in df.columns:
+            df["ListPrice"] = None
+
+        df["NetPrice"] = forecast.to_num(
+            df["NetPrice"]
+        )
+
+        df["ListPrice"] = forecast.to_num(
+            df["ListPrice"]
+        )
+
+        if "UOM" not in df.columns:
+            df["UOM"] = "KG"
+
+        df["UOM"] = (
+            df["UOM"]
+            .astype(str)
+            .fillna("KG")
+        )
+
+        df["StartDate_dt"] = forecast.parse_date(
+            df["StartDate"]
+        )
+
+        df["Period"] = (
+            df["Period"]
+            .astype(str)
+            .str.strip()
+        )
+
+        df = df[
+            (df["Period"] == p)
+            & df["StartDate_dt"].notna()
+        ].copy()
+
+        if df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history after period filtering."
+            )
+
+        df = df.sort_values(
+            forecast.KEY_COLS + ["StartDate_dt"]
+        )
+
+        df["NetPrice"] = (
+            df.groupby(forecast.KEY_COLS)["NetPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        df["ListPrice"] = (
+            df.groupby(forecast.KEY_COLS)["ListPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        # --------------------------------------------------
+        # Build exogenous inputs
+        # --------------------------------------------------
+
+        weather_hist_agg, clim_map = (
+            forecast.build_weather_climatology(
+                weather_df,
+                p,
+            )
+        )
+
+        promo_daily = (
+            forecast.expand_promotions_to_daily(
+                promo_df
+            )
+        )
+
+        promo_agg = (
+            forecast.aggregate_promotions_to_period(
+                promo_daily,
+                p,
+            )
+        )
+
+        promo_clim = (
+            forecast.build_promo_climatology(
+                promo_agg,
+                p,
+            )
+        )
+
+        df_exog = forecast.attach_exog_to_history(
+            df,
+            weather_hist_agg,
+            promo_agg,
+        )
+
+        # --------------------------------------------------
+        # Run selected-key backtest
+        # --------------------------------------------------
+
+        result = forecast.rolling_backtest_selected_key(
+            df_exog=df_exog,
+            period=p,
+            forecast_key=(
+                productid,
+                channelid,
+                locationid,
+            ),
+            use_exog=(v == "feat"),
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        # --------------------------------------------------
+        # Save successful backtest summary
+        # --------------------------------------------------
+
+        if result.get("ok"):
+            insert_sql = text(f"""
+                INSERT INTO {_qualified(db_schema, "forecast_backtest_result")} (
+                    scenario_id,
+                    level,
+                    period,
+                    product_id,
+                    channel_id,
+                    location_id,
+                    variant,
+                    accuracy,
+                    wape,
+                    bias_pct,
+                    n,
+                    folds
+                )
+                VALUES (
+                    :scenario_id,
+                    :level,
+                    :period,
+                    :product_id,
+                    :channel_id,
+                    :location_id,
+                    :variant,
+                    :accuracy,
+                    :wape,
+                    :bias_pct,
+                    :n,
+                    :folds
+                );
+            """)
+
+            with ENGINE.begin() as conn:
+                conn.execute(
+                    insert_sql,
+                    {
+                        "scenario_id": int(scenario_id),
+                        "level": lvl,
+                        "period": p,
+                        "product_id": productid,
+                        "channel_id": channelid,
+                        "location_id": locationid,
+                        "variant": v,
+                        "accuracy": result.get("accuracy"),
+                        "wape": result.get("wape"),
+                        "bias_pct": result.get("bias_pct"),
+                        "n": int(result.get("n") or 0),
+                        "folds": int(result.get("folds") or 0),
+                    },
+                )
+
+        return {
+            "scenario_id": scenario_id,
+            "level": lvl,
+            "variant": v,
+            **result,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        tb = traceback.format_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Selected-key backtest failed: {e}\n\n{tb}"
+            ),
+        )
+    
+@router.get("/api/forecast/backtest-latest")
+def api_forecast_backtest_latest(
+    productid: str = Query(...),
+    channelid: str = Query(...),
+    locationid: str = Query(...),
+    period: str = Query("Weekly"),
+    level: str = Query("111"),
+    variant: str = Query("feat", description="baseline | feat"),
+    scenario_id: int = Query(1, ge=1),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
+    """
+    Return the most recently saved backtest result.
+
+    This endpoint does NOT run a backtest.
+    It only reads the latest stored result.
+    """
+
+    try:
+        _ensure_engine()
+
+        v = (variant or "feat").strip().lower()
+        p = (period or "").strip()
+        lvl = str(level).strip()
+
+        sql = text(f"""
+            SELECT
+                scenario_id,
+                level,
+                period,
+                product_id,
+                channel_id,
+                location_id,
+                variant,
+                accuracy,
+                wape,
+                bias_pct,
+                n,
+                folds,
+                run_at
+            FROM {_qualified(db_schema, "forecast_backtest_result")}
+            WHERE scenario_id = :scenario_id
+              AND level = :level
+              AND period = :period
+              AND product_id = :product_id
+              AND channel_id = :channel_id
+              AND location_id = :location_id
+              AND variant = :variant
+            ORDER BY run_at DESC
+            LIMIT 1;
+        """)
+
+        params = {
+            "scenario_id": int(scenario_id),
+            "level": lvl,
+            "period": p,
+            "product_id": productid,
+            "channel_id": channelid,
+            "location_id": locationid,
+            "variant": v,
+        }
+
+        with ENGINE.begin() as conn:
+            row = conn.execute(sql, params).mappings().first()
+
+        if row is None:
+            return {
+                "ok": False,
+                "scenario_id": int(scenario_id),
+                "level": lvl,
+                "period": p,
+                "variant": v,
+                "reason": "No saved backtest result found.",
+            }
+
+        return {
+            "ok": True,
+            **dict(row),
+        }
+
+    except Exception as e:
+        tb = traceback.format_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Latest backtest lookup failed: {e}\n\n{tb}",
+        )
 
 @router.get("/api/forecast/search")
 def api_forecast_search(

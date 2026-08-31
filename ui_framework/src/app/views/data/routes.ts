@@ -68,13 +68,6 @@ export const routes: Routes = [
           title: 'KPI'
         }
       },
-      // {
-      //   path: 'kpi',
-      //   loadComponent: () => import('../data/kpi/kpi-dashboard.component').then(m => m.KpiDashboardComponent),
-      //   data: {
-      //     title: 'KPI'
-      //   }
-      // },
       {
         path: 'weather-correlation',
         loadComponent: () => import('../data/weather-correlation/weather-correlation.component').then(m => m.WeatherCorrelationComponent),

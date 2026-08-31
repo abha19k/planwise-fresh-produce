@@ -30,7 +30,8 @@
               <label class="form-label d-block">&nbsp;</label>
               <button
                 cButton
-                class="btn btn-outline-primary w-100"
+                color="primary"
+                class="w-100"
                 (click)="copyScenario()"
                 [disabled]="copying || loading"
               >
@@ -83,7 +84,8 @@
                   <td>
                     <button
                       cButton
-                      class="btn btn-sm btn-outline-primary"
+                      color="primary"
+                      size="sm"
                       (click)="selectScenario(s.scenario_id)"
                       [disabled]="isSelectedScenario(s.scenario_id)"
                     >

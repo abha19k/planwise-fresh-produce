@@ -492,6 +492,47 @@ export class KpiComponent implements OnInit, OnDestroy {
     ];
   }
 
+  // ============================================================
+  // PRESENTATION HELPERS
+  // ============================================================
+
+  forecastAccuracy(metrics: Metrics | null | undefined): number {
+    const wape = Number(metrics?.wape ?? 0);
+    return Math.max(0, 100 - wape);
+  }
+
+  biasInterpretation(metrics: Metrics | null | undefined): string {
+    const bias = Number(metrics?.bias_pct ?? 0);
+
+    if (Math.abs(bias) < 1) return 'Well balanced';
+    if (bias > 5) return 'Over-forecasting';
+    if (bias > 1) return 'Slight over-forecast';
+    if (bias < -5) return 'Under-forecasting';
+    if (bias < -1) return 'Slight under-forecast';
+
+    return 'Near neutral';
+  }
+
+  accuracyDelta(
+    a: Metrics | null | undefined,
+    b: Metrics | null | undefined
+  ): number {
+    return this.forecastAccuracy(b) - this.forecastAccuracy(a);
+  }
+
+  bestScenario(
+    a: KpiResult | null | undefined,
+    b: KpiResult | null | undefined
+  ): KpiResult | null {
+    if (!a && !b) return null;
+    if (!a) return b ?? null;
+    if (!b) return a;
+
+    return this.forecastAccuracy(b.metrics) > this.forecastAccuracy(a.metrics)
+      ? b
+      : a;
+  }
+
   private loadHistoryByKeys(keys: Key[], limitPerKey: number) {
     const period = this.getPeriod();
     const endpoint =
@@ -830,3 +871,4 @@ export class KpiComponent implements OnInit, OnDestroy {
       });
   }
 }
+

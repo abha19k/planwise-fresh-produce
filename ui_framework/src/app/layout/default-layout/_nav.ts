@@ -59,17 +59,17 @@ export const navItems: INavData[] = [
         name: 'Promotions',
         url: '/data/promotions',
         icon: 'nav-icon-bullet'
-      }
-      // {
-      //   name: 'Weather Correlation',
-      //   url: '/data/weather-correlation',
-      //   icon: 'nav-icon-bullet'
-      // },
-      // {
-      //   name: 'Supply Data',
-      //   url: '/data/supply-data',
-      //   icon: 'nav-icon-bullet' 
-      // },      
+      },
+      {
+        name: 'Weather Correlation',
+        url: '/data/weather-correlation',
+        icon: 'nav-icon-bullet'
+      },
+      {
+        name: 'Supply Data',
+        url: '/data/supply-data',
+        icon: 'nav-icon-bullet' 
+      },      
       // {
       //   name: 'Global Parameters',
       //   url: '/data/global-parameters',
