@@ -14,6 +14,7 @@ from core.config import (
     DEFAULT_SCHEMA,
     DEFAULT_WEATHER_TABLE,
     DEFAULT_PROMO_TABLE,
+    HISTORY_VIEW,
 )
 from services.scenario_service import (
     _get_base_scenario_id,
@@ -299,3 +300,349 @@ def api_promotions(
         "count": len(final_rows),
         "rows": final_rows,
     }
+
+# ============================================================
+# WEATHER / SALES CORRELATION
+# ============================================================
+
+WEATHER_METRIC_MAP = {
+    # Frontend key -> current DB column
+    "TempAvg": "TavgC",
+    "TempMin": "TminC",
+    "TempMax": "TmaxC",
+    "RainMm": "PrecipMM",
+    "SnowCm": None,       # Current weather table has no snowfall column
+    "WindMax": "WindMaxMS",
+    "SunHours": "SunHours",
+}
+
+
+def _normalise_period(period: str) -> str:
+    p = (period or "").strip().lower()
+
+    if p == "daily":
+        return "Daily"
+    if p == "weekly":
+        return "Weekly"
+    if p == "monthly":
+        return "Monthly"
+
+    raise HTTPException(
+        status_code=400,
+        detail="period must be Daily, Weekly or Monthly",
+    )
+
+
+def _load_weather_sales_rows(
+    db_schema: str,
+    product_id: str,
+    channel_id: str,
+    location_id: str,
+    period: str,
+    weather_column: str,
+):
+    """
+    Load and align weather + sales history for one
+    Product / Channel / Location / Period.
+
+    History already exists at Daily / Weekly / Monthly grain
+    in v_history, so Qty is read directly at the requested grain.
+
+    Weather is daily and therefore aggregated to the requested grain.
+    """
+
+    _ensure_engine()
+
+    period_ui = _normalise_period(period)
+
+    history_qual = _qualified(db_schema, HISTORY_VIEW)
+    weather_qual = _qualified(db_schema, DEFAULT_WEATHER_TABLE)
+
+    params = {
+        "product_id": product_id.strip(),
+        "channel_id": channel_id.strip(),
+        "location_id": location_id.strip(),
+        "period": period_ui,
+    }
+
+    # --------------------------------------------------------
+    # History
+    # --------------------------------------------------------
+
+    history_sql = text(
+        f"""
+        SELECT
+            h."StartDate"::date AS "Date",
+            SUM(h."Qty")::double precision AS "Qty"
+        FROM {history_qual} h
+        WHERE TRIM(h."ProductID") = :product_id
+          AND TRIM(h."ChannelID") = :channel_id
+          AND TRIM(h."LocationID") = :location_id
+          AND LOWER(TRIM(h."Period")) = LOWER(:period)
+        GROUP BY h."StartDate"::date
+        ORDER BY h."StartDate"::date
+        """
+    )
+
+    # --------------------------------------------------------
+    # Weather
+    # --------------------------------------------------------
+
+    if period_ui == "Daily":
+
+        weather_sql = text(
+            f"""
+            SELECT
+                w."Date"::date AS "Date",
+                AVG(w."{weather_column}")::double precision AS "WeatherMetric"
+            FROM {weather_qual} w
+            WHERE TRIM(w."LocationID") = :location_id
+              AND w."{weather_column}" IS NOT NULL
+            GROUP BY w."Date"::date
+            ORDER BY w."Date"::date
+            """
+        )
+
+    elif period_ui == "Weekly":
+
+        # PlanWise weekly history uses Monday as StartDate.
+        weather_sql = text(
+            f"""
+            SELECT
+                date_trunc('week', w."Date")::date AS "Date",
+                AVG(w."{weather_column}")::double precision AS "WeatherMetric"
+            FROM {weather_qual} w
+            WHERE TRIM(w."LocationID") = :location_id
+              AND w."{weather_column}" IS NOT NULL
+            GROUP BY date_trunc('week', w."Date")::date
+            ORDER BY date_trunc('week', w."Date")::date
+            """
+        )
+
+    else:  # Monthly
+
+        weather_sql = text(
+            f"""
+            SELECT
+                date_trunc('month', w."Date")::date AS "Date",
+                AVG(w."{weather_column}")::double precision AS "WeatherMetric"
+            FROM {weather_qual} w
+            WHERE TRIM(w."LocationID") = :location_id
+              AND w."{weather_column}" IS NOT NULL
+            GROUP BY date_trunc('month', w."Date")::date
+            ORDER BY date_trunc('month', w."Date")::date
+            """
+        )
+
+    try:
+        with ENGINE.begin() as conn:
+            history_rows = conn.execute(
+                history_sql,
+                params,
+            ).mappings().all()
+
+            weather_rows = conn.execute(
+                weather_sql,
+                params,
+            ).mappings().all()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed loading weather/sales data: {e}",
+        )
+
+    # --------------------------------------------------------
+    # Join in Python
+    # --------------------------------------------------------
+
+    history_map = {}
+
+    for r in history_rows:
+        d = r["Date"]
+
+        if d is None:
+            continue
+
+        qty = r["Qty"]
+
+        if qty is None:
+            continue
+
+        history_map[d] = float(qty)
+
+    weather_map = {}
+
+    for r in weather_rows:
+        d = r["Date"]
+
+        if d is None:
+            continue
+
+        value = r["WeatherMetric"]
+
+        if value is None:
+            continue
+
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            continue
+
+        if not math.isfinite(value):
+            continue
+
+        weather_map[d] = value
+
+    common_dates = sorted(
+        set(history_map.keys()) &
+        set(weather_map.keys())
+    )
+
+    result = []
+
+    for d in common_dates:
+
+        qty = history_map[d]
+        weather_value = weather_map[d]
+
+        if not math.isfinite(qty):
+            continue
+
+        result.append(
+            {
+                "date": d.isoformat(),
+                "weatherMetric": weather_value,
+                "quantity": qty,
+            }
+        )
+
+    return result
+
+
+# ============================================================
+# WEATHER + SALES SERIES
+# ============================================================
+
+@router.get("/api/weather-sales")
+def api_weather_sales(
+    productId: str = Query(...),
+    channelId: str = Query(...),
+    locationId: str = Query(...),
+    period: str = Query("Daily"),
+    metric: str = Query("TempAvg"),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(
+        require_roles("admin", "planner", "viewer")
+    ),
+):
+    """
+    Return aligned weather + sales observations for the selected
+    Product / Channel / Location / Period.
+    """
+
+    metric = (metric or "").strip()
+
+    if metric not in WEATHER_METRIC_MAP:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unknown weather metric '{metric}'. "
+                f"Allowed: {list(WEATHER_METRIC_MAP.keys())}"
+            ),
+        )
+
+    weather_column = WEATHER_METRIC_MAP[metric]
+
+    # Snowfall doesn't currently exist in weather_daily.
+    if weather_column is None:
+        return []
+
+    rows = _load_weather_sales_rows(
+        db_schema=db_schema,
+        product_id=productId,
+        channel_id=channelId,
+        location_id=locationId,
+        period=period,
+        weather_column=weather_column,
+    )
+
+    return rows
+
+
+# ============================================================
+# WEATHER CORRELATIONS
+# ============================================================
+
+@router.get("/api/weather-correlations")
+def api_weather_correlations(
+    productId: str = Query(...),
+    channelId: str = Query(...),
+    locationId: str = Query(...),
+    period: str = Query("Daily"),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(
+        require_roles("admin", "planner", "viewer")
+    ),
+):
+    """
+    Pearson correlation between historical sales and each
+    available weather metric.
+    """
+
+    result = {
+        "TempAvg": None,
+        "TempMin": None,
+        "TempMax": None,
+        "RainMm": None,
+        "SnowCm": None,
+        "WindMax": None,
+        "SunHours": None,
+    }
+
+    for frontend_metric, weather_column in WEATHER_METRIC_MAP.items():
+
+        if weather_column is None:
+            continue
+
+        rows = _load_weather_sales_rows(
+            db_schema=db_schema,
+            product_id=productId,
+            channel_id=channelId,
+            location_id=locationId,
+            period=period,
+            weather_column=weather_column,
+        )
+
+        if len(rows) < 2:
+            continue
+
+        x = np.asarray(
+            [r["weatherMetric"] for r in rows],
+            dtype=float,
+        )
+
+        y = np.asarray(
+            [r["quantity"] for r in rows],
+            dtype=float,
+        )
+
+        valid = np.isfinite(x) & np.isfinite(y)
+
+        x = x[valid]
+        y = y[valid]
+
+        if len(x) < 2:
+            continue
+
+        # Pearson correlation is undefined when either series
+        # has zero variance.
+        if np.std(x) <= 1e-12 or np.std(y) <= 1e-12:
+            continue
+
+        corr = float(np.corrcoef(x, y)[0, 1])
+
+        if math.isfinite(corr):
+            result[frontend_metric] = corr
+
+    return result
