@@ -160,6 +160,310 @@ def build_weather_climatology(
 
     return weather_hist_agg, clim_map
 
+def aggregate_future_weather(
+    weather_forecast_daily: Optional[pd.DataFrame],
+    period: str,
+) -> pd.DataFrame:
+    """
+    Aggregate future daily weather forecasts to the forecasting grain.
+
+    Daily   -> one row per day
+    Weekly  -> average of available daily forecasts in each Monday-based week
+    Monthly -> average of available daily forecasts in each month
+    """
+    if weather_forecast_daily is None or weather_forecast_daily.empty:
+        return pd.DataFrame(
+            columns=["LocationID", "StartDate_dt"] + WEATHER_COLS
+        )
+
+    w = weather_forecast_daily.copy()
+
+    w["Date"] = parse_date(w["Date"])
+    w["LocationID"] = (
+        w["LocationID"]
+        .astype(str)
+        .str.strip()
+    )
+
+    for c in WEATHER_COLS:
+        if c in w.columns:
+            w[c] = to_num(w[c])
+
+    w = w.dropna(
+        subset=["LocationID", "Date"]
+    ).copy()
+
+    w["StartDate_dt"] = w["Date"].apply(
+        lambda d: period_to_bucket_start(
+            period,
+            pd.Timestamp(d),
+        )
+    )
+
+    available_cols = [
+        c for c in WEATHER_COLS
+        if c in w.columns
+    ]
+
+    if not available_cols:
+        return pd.DataFrame(
+            columns=["LocationID", "StartDate_dt"] + WEATHER_COLS
+        )
+
+    return (
+        w.groupby(
+            ["LocationID", "StartDate_dt"],
+            as_index=False,
+        )[available_cols]
+        .mean()
+    )
+
+def build_complete_future_weather(
+    weather_daily: pd.DataFrame,
+    weather_future_daily: Optional[pd.DataFrame],
+    period: str,
+    location_id: str,
+    future_starts: List[pd.Timestamp],
+    use_observed_weather: bool = False,
+) -> pd.DataFrame:
+    """
+    Build complete weather features for forecast periods.
+
+    Priority for every individual day:
+      1. observed weather_daily
+      2. weather_forecast_daily
+      3. historical daily climatology
+      4. historical location mean
+      5. zero
+
+    Daily values are resolved BEFORE aggregation so Weekly and
+    Monthly periods never use incomplete weather buckets.
+    """
+
+    location_id = str(location_id).strip()
+
+    if not future_starts:
+        return pd.DataFrame(
+            columns=["LocationID", "StartDate_dt"] + WEATHER_COLS
+        )
+
+    # ---------------------------------------------------------
+    # Determine every calendar day required by forecast periods
+    # ---------------------------------------------------------
+
+    first_day = pd.Timestamp(future_starts[0]).normalize()
+
+    if period == "Daily":
+        last_day = pd.Timestamp(future_starts[-1]).normalize()
+
+    elif period == "Weekly":
+        last_day = (
+            pd.Timestamp(future_starts[-1]).normalize()
+            + pd.Timedelta(days=6)
+        )
+
+    elif period == "Monthly":
+        last_day = (
+            pd.Timestamp(future_starts[-1])
+            + pd.offsets.MonthEnd(0)
+        ).normalize()
+
+    else:
+        raise ValueError(period)
+
+    all_dates = pd.date_range(
+        start=first_day,
+        end=last_day,
+        freq="D",
+    )
+
+    out = pd.DataFrame({
+        "LocationID": location_id,
+        "Date": all_dates,
+    })
+
+    # ---------------------------------------------------------
+    # Historical observed daily weather
+    # ---------------------------------------------------------
+
+    hist = weather_daily.copy()
+
+    hist["Date"] = parse_date(hist["Date"]).dt.normalize()
+    hist["LocationID"] = (
+        hist["LocationID"].astype(str).str.strip()
+    )
+
+    hist = hist[
+        hist["LocationID"] == location_id
+    ].copy()
+
+    for c in WEATHER_COLS:
+        if c in hist.columns:
+            hist[c] = to_num(hist[c])
+
+    hist_cols = [
+        "LocationID",
+        "Date",
+    ] + [
+        c for c in WEATHER_COLS
+        if c in hist.columns
+    ]
+
+    hist = hist[hist_cols]
+
+    if use_observed_weather:
+        out = out.merge(
+            hist,
+            on=["LocationID", "Date"],
+            how="left",
+        )
+
+    for c in WEATHER_COLS:
+        if c not in out.columns:
+            out[c] = np.nan
+
+    # ---------------------------------------------------------
+    # Future daily weather
+    # ---------------------------------------------------------
+
+    if (
+        weather_future_daily is not None
+        and not weather_future_daily.empty
+    ):
+        future = weather_future_daily.copy()
+
+        future["Date"] = (
+            parse_date(future["Date"]).dt.normalize()
+        )
+
+        future["LocationID"] = (
+            future["LocationID"]
+            .astype(str)
+            .str.strip()
+        )
+
+        future = future[
+            future["LocationID"] == location_id
+        ].copy()
+
+        for c in WEATHER_COLS:
+            if c in future.columns:
+                future[c] = to_num(future[c])
+
+        future_cols = [
+            "LocationID",
+            "Date",
+        ] + [
+            c for c in WEATHER_COLS
+            if c in future.columns
+        ]
+
+        future = future[future_cols]
+
+        future = future.rename(
+            columns={
+                c: f"{c}_future"
+                for c in WEATHER_COLS
+                if c in future.columns
+            }
+        )
+
+        out = out.merge(
+            future,
+            on=["LocationID", "Date"],
+            how="left",
+        )
+
+        for c in WEATHER_COLS:
+            fc = f"{c}_future"
+
+            if fc in out.columns:
+                out[c] = out[c].fillna(out[fc])
+                out.drop(columns=[fc], inplace=True)
+
+    # ---------------------------------------------------------
+    # Daily historical climatology
+    # ---------------------------------------------------------
+
+    if not hist.empty:
+
+        hist["season_key"] = hist["Date"].dt.dayofyear
+
+        available_cols = [
+            c for c in WEATHER_COLS
+            if c in hist.columns
+        ]
+
+        daily_clim = (
+            hist.groupby("season_key")[available_cols]
+            .mean()
+        )
+
+        location_means = hist[available_cols].mean()
+
+        for i in out.index:
+
+            season_key = int(
+                out.loc[i, "Date"].dayofyear
+            )
+
+            for c in WEATHER_COLS:
+
+                if pd.notna(out.loc[i, c]):
+                    continue
+
+                if (
+                    c in daily_clim.columns
+                    and season_key in daily_clim.index
+                ):
+                    value = daily_clim.loc[
+                        season_key,
+                        c,
+                    ]
+
+                    if pd.notna(value):
+                        out.loc[i, c] = value
+                        continue
+
+                if (
+                    c in location_means.index
+                    and pd.notna(location_means[c])
+                ):
+                    out.loc[i, c] = location_means[c]
+
+    for c in WEATHER_COLS:
+        out[c] = to_num(out[c]).fillna(0.0)
+
+    # ---------------------------------------------------------
+    # NOW aggregate complete daily weather
+    # ---------------------------------------------------------
+
+    out["StartDate_dt"] = out["Date"].apply(
+        lambda d: period_to_bucket_start(
+            period,
+            pd.Timestamp(d),
+        )
+    )
+
+    result = (
+        out.groupby(
+            ["LocationID", "StartDate_dt"],
+            as_index=False,
+        )[WEATHER_COLS]
+        .mean()
+    )
+
+    required_starts = pd.DataFrame({
+        "LocationID": location_id,
+        "StartDate_dt": future_starts,
+    })
+
+
+    return required_starts.merge(
+        result,
+        on=["LocationID", "StartDate_dt"],
+        how="left",
+    )
 
 def weather_features_for_dates(
     period: str,
@@ -167,31 +471,175 @@ def weather_features_for_dates(
     dates: List[pd.Timestamp],
     weather_hist_agg: pd.DataFrame,
     clim_map: Dict[Tuple[str, int], Dict[str, float]],
+    weather_future_agg: Optional[pd.DataFrame] = None,
+    use_observed_weather: bool = False,
 ) -> pd.DataFrame:
-    location_id = str(location_id).strip()
-    tmp = pd.DataFrame({"LocationID": [location_id] * len(dates), "StartDate_dt": dates})
-    out = tmp.merge(weather_hist_agg, on=["LocationID", "StartDate_dt"], how="left")
+    
+        location_id = str(location_id).strip()
 
-    if period == "Daily":
-        keys = [d.dayofyear for d in dates]
-    elif period == "Weekly":
-        keys = [int(d.isocalendar().week) for d in dates]
-    else:
-        keys = [d.month for d in dates]
+        tmp = pd.DataFrame({
+            "LocationID": [location_id] * len(dates),
+            "StartDate_dt": dates,
+        })
 
-    wcols = [c for c in weather_hist_agg.columns if c not in ("LocationID", "StartDate_dt")]
-    for i, sk in enumerate(keys):
-        if (len(wcols) > 0) and out.loc[i, wcols].isna().all():
-            vals = clim_map.get((location_id, int(sk)), {})
-            for c in wcols:
+        out = tmp.copy()
+
+        # =========================================================
+        # 1. Observed historical weather for exact forecast dates
+        #
+        # Used for normal/replay forecasting only.
+        # Must remain OFF during rolling backtests to avoid leakage.
+        # =========================================================
+
+        if (
+            use_observed_weather
+            and weather_hist_agg is not None
+            and not weather_hist_agg.empty
+        ):
+            hist_sub = weather_hist_agg[
+                weather_hist_agg["LocationID"]
+                .astype(str)
+                .str.strip()
+                == location_id
+            ].copy()
+
+            hist_cols = [
+                "LocationID",
+                "StartDate_dt",
+            ] + [
+                c for c in WEATHER_COLS
+                if c in hist_sub.columns
+            ]
+
+            hist_sub = hist_sub[hist_cols]
+
+            out = out.merge(
+                hist_sub,
+                on=["LocationID", "StartDate_dt"],
+                how="left",
+            )
+
+        # Make sure every weather column exists
+        for c in WEATHER_COLS:
+            if c not in out.columns:
+                out[c] = np.nan
+
+        # =========================================================
+        # 2. Future weather forecast
+        # =========================================================
+
+        if (
+            weather_future_agg is not None
+            and not weather_future_agg.empty
+        ):
+            future_sub = weather_future_agg[
+                weather_future_agg["LocationID"]
+                .astype(str)
+                .str.strip()
+                == location_id
+            ].copy()
+
+            future_cols = [
+                "LocationID",
+                "StartDate_dt",
+            ] + [
+                c for c in WEATHER_COLS
+                if c in future_sub.columns
+            ]
+
+            future_sub = future_sub[future_cols]
+
+            future_sub = future_sub.rename(
+                columns={
+                    c: f"{c}_future"
+                    for c in WEATHER_COLS
+                    if c in future_sub.columns
+                }
+            )
+
+            out = out.merge(
+                future_sub,
+                on=["LocationID", "StartDate_dt"],
+                how="left",
+            )
+
+            # Observed weather wins.
+            # Future forecast fills only missing observed weather.
+            for c in WEATHER_COLS:
+                future_col = f"{c}_future"
+
+                if future_col in out.columns:
+                    out[c] = out[c].fillna(
+                        out[future_col]
+                    )
+
+                    out.drop(
+                        columns=[future_col],
+                        inplace=True,
+                    )
+
+        # =========================================================
+        # 3. Seasonal climatology
+        # =========================================================
+
+        if period == "Daily":
+            keys = [
+                d.dayofyear
+                for d in dates
+            ]
+
+        elif period == "Weekly":
+            keys = [
+                int(d.isocalendar().week)
+                for d in dates
+            ]
+
+        else:
+            keys = [
+                d.month
+                for d in dates
+            ]
+
+        for i, season_key in enumerate(keys):
+
+            for c in WEATHER_COLS:
+
+                # Keep observed/future weather when available
+                if pd.notna(out.loc[i, c]):
+                    continue
+
+                vals = clim_map.get(
+                    (location_id, int(season_key)),
+                    {},
+                )
+
                 if c in vals:
                     out.loc[i, c] = vals[c]
 
-    for c in wcols:
-        if out[c].isna().any():
-            out[c] = out[c].fillna(weather_hist_agg[c].mean())
+        # =========================================================
+        # 4. Final fallback: historical mean
+        # =========================================================
 
-    return out
+        for c in WEATHER_COLS:
+
+            if out[c].isna().any():
+
+                if c in weather_hist_agg.columns:
+
+                    fallback = to_num(
+                        weather_hist_agg[c]
+                    ).mean()
+
+                    out[c] = out[c].fillna(
+                        fallback
+                    )
+
+                out[c] = out[c].fillna(0.0)
+        
+
+        return out
+
+
 
 
 # ============================================================
@@ -422,6 +870,10 @@ def forecast_one_series(
     clim_map: Dict[Tuple[str, int], Dict[str, float]],
     promo_agg: pd.DataFrame,
     promo_clim: Dict[Tuple[str, str, str, int], Dict[str, float]],
+    weather_daily: Optional[pd.DataFrame] = None,
+    weather_future_daily: Optional[pd.DataFrame] = None,
+    weather_future_agg: Optional[pd.DataFrame] = None,
+    use_observed_weather: bool = False,
 ) -> pd.DataFrame:
     hist = hist.sort_values("StartDate_dt").copy()
     last = hist.iloc[-1]
@@ -437,7 +889,31 @@ def forecast_one_series(
         future_starts.append(next_start(period, future_starts[-1]))
     future_ends = [make_end_date(period, s) for s in future_starts]
 
-    w_future = weather_features_for_dates(period, lid, future_starts, weather_hist_agg, clim_map)
+    if (
+        weather_daily is not None
+        and not weather_daily.empty
+    ):
+        w_future = build_complete_future_weather(
+            weather_daily=weather_daily,
+            weather_future_daily=weather_future_daily,
+            period=period,
+            location_id=lid,
+            future_starts=future_starts,
+            use_observed_weather=use_observed_weather,
+        )
+    else:
+        # Fallback to the existing logic
+        w_future = weather_features_for_dates(
+            period=period,
+            location_id=lid,
+            dates=future_starts,
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            weather_future_agg=weather_future_agg,
+            use_observed_weather=use_observed_weather,
+        )
+
+
     p_future = promo_features_for_future(period, (pid, cid, lid), future_starts, promo_agg, promo_clim)
 
     list_price = float(last["ListPrice"]) if pd.notna(last["ListPrice"]) else np.nan
@@ -1116,6 +1592,8 @@ def run_one_job_df(
     promos: pd.DataFrame,
     tag: str,
 
+    weather_future_daily: Optional[pd.DataFrame] = None,
+
     db_engine: Optional[Engine] = None,
     db_schema: Optional[str] = None,
     level: Optional[str] = None,
@@ -1181,7 +1659,9 @@ def run_one_job_df(
     df["ListPrice"] = df.groupby(KEY_COLS)["ListPrice"].ffill().bfill()
 
     # build exog climatologies
-    weather_hist_agg, clim_map = build_weather_climatology(weather_daily, period)
+    weather_hist_agg, clim_map = build_weather_climatology(weather_daily, period,)
+    weather_future_agg = aggregate_future_weather(weather_future_daily, period,)
+
 
     promo_daily = expand_promotions_to_daily(promos)
     promo_agg = aggregate_promotions_to_period(promo_daily, period)
@@ -1333,6 +1813,10 @@ def run_one_job_df(
                 clim_map=clim_map,
                 promo_agg=promo_agg,
                 promo_clim=promo_clim,
+                weather_daily=weather_daily,
+                weather_future_daily=weather_future_daily,
+                weather_future_agg=weather_future_agg,
+                use_observed_weather=True,
             )
         )
 
@@ -1458,5 +1942,6 @@ def run_one_job_df(
         result["fc_base"] = fc_base
         result["fc_feat"] = fc_feat
         result["backtest_summary"] = summary
+
 
     return result

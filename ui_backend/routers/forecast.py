@@ -4,6 +4,7 @@ import os
 import re
 import traceback
 from typing import Dict, Optional
+import pandas as pd
 
 from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
@@ -43,6 +44,63 @@ def _ensure_engine():
     global ENGINE
     if ENGINE is None:
         ENGINE = get_engine()
+
+def _load_future_weather_df(
+    db_schema: str,
+    table_name: str = "weather_forecast_daily",
+):
+    """
+    Load future weather forecasts.
+
+    This is intentionally separate from historical weather_daily so
+    forecast weather cannot accidentally enter model training/backtesting.
+    """
+    _ensure_engine()
+
+    table_qual = _qualified(db_schema, table_name)
+
+    sql = text(f"""
+        SELECT
+            "LocationID",
+            "Date",
+            "TavgC",
+            "TminC",
+            "TmaxC",
+            "PrecipMM",
+            "WindMaxMS",
+            "SunHours",
+            "Provider",
+            "Model",
+            "ForecastRun",
+            "LoadedAt"
+        FROM {table_qual}
+        ORDER BY "LocationID", "Date";
+    """)
+
+    with ENGINE.begin() as conn:
+        rows = conn.execute(sql).mappings().all()
+
+    import pandas as pd
+
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "LocationID",
+                "Date",
+                "TavgC",
+                "TminC",
+                "TmaxC",
+                "PrecipMM",
+                "WindMaxMS",
+                "SunHours",
+                "Provider",
+                "Model",
+                "ForecastRun",
+                "LoadedAt",
+            ]
+        )
+
+    return pd.DataFrame([dict(r) for r in rows])
 
 
 def _safe_filename(name: str) -> str:
@@ -666,6 +724,12 @@ def run_one_db(
         )
         weather_df = _normalize_weather_cols(weather_df)
 
+        # Future weather forecast
+        future_weather_df = _load_future_weather_df(
+            db_schema=schema,
+            table_name="weather_forecast_daily",
+        )
+
         promo_df = _scenario_promotions_df(
             db_schema=schema,
             scenario_id=req.scenario_id,
@@ -693,6 +757,9 @@ def run_one_db(
             weather_daily=weather_df,
             promos=promo_df,
             tag=tag,
+
+            weather_future_daily=future_weather_df,
+
             db_engine=ENGINE,
             db_schema=schema,
             level=level,
@@ -796,6 +863,11 @@ def run_all_db(
     )
     weather_df = _normalize_weather_cols(weather_df)
 
+    future_weather_df = _load_future_weather_df(
+        db_schema=schema,
+        table_name="weather_forecast_daily",
+    )
+
     promo_df = _scenario_promotions_df(
         db_schema=schema,
         scenario_id=req.scenario_id,
@@ -824,6 +896,9 @@ def run_all_db(
                 weather_daily=weather_df,
                 promos=promo_df,
                 tag=tag,
+
+                weather_future_daily=future_weather_df,
+
                 scenario_id=req.scenario_id,
                 db_engine=ENGINE,
                 db_schema=schema,
