@@ -813,16 +813,413 @@ def build_supervised_frame(
     feats = feats.dropna().reset_index(drop=True)
     return feats
 
+def select_diagnostic_features(
+    feature_cols: List[str],
+    mode: str,
+) -> List[str]:
+    """
+    Select model features for diagnostic / ablation backtesting only.
 
-def train_model(train_frame: pd.DataFrame) -> Tuple[XGBRegressor, List[str]]:
-    feature_cols = [c for c in train_frame.columns if c not in ("StartDate_dt", "y")]
+    Modes:
+        baseline   -> demand history + price + calendar
+        weather    -> baseline + weather
+        promotions -> baseline + promotions
+        all        -> baseline + weather + promotions
+
+    Does not change normal production forecasting.
+    """
+
+    mode = (mode or "baseline").strip().lower()
+
+    valid_modes = {
+        "baseline",
+        "weather",
+        "promotions",
+        "all",
+    }
+
+    if mode not in valid_modes:
+        raise ValueError(
+            f"Invalid diagnostic feature mode: {mode}. "
+            f"Expected one of {sorted(valid_modes)}."
+        )
+
+    weather_cols = set(WEATHER_COLS)
+    promo_cols = set(PROMO_COLS)
+
+    # Baseline = everything except external-factor columns
+    baseline_cols = [
+        c for c in feature_cols
+        if c not in weather_cols
+        and c not in promo_cols
+    ]
+
+    if mode == "baseline":
+        return baseline_cols
+
+    if mode == "weather":
+        return baseline_cols + [
+            c for c in feature_cols
+            if c in weather_cols
+        ]
+
+    if mode == "promotions":
+        return baseline_cols + [
+            c for c in feature_cols
+            if c in promo_cols
+        ]
+
+    # all
+    return list(feature_cols)
+
+def train_model(
+    train_frame: pd.DataFrame,
+    diagnostic_mode: Optional[str] = None,
+) -> Tuple[XGBRegressor, List[str]]:
+
+    feature_cols = [
+        c for c in train_frame.columns
+        if c not in ("StartDate_dt", "y")
+    ]
+
+    if diagnostic_mode is not None:
+        feature_cols = select_diagnostic_features(
+            feature_cols,
+            diagnostic_mode,
+        )
+
     X = train_frame[feature_cols].to_numpy()
     y = train_frame["y"].to_numpy()
 
     model = XGBRegressor(**XGB_PARAMS)
     model.fit(X, y)
+
     return model, feature_cols
 
+def get_feature_importance(
+    model: XGBRegressor,
+    feature_cols: List[str],
+) -> List[Dict[str, object]]:
+    """
+    Return ranked XGBoost feature importance.
+
+    Uses gain importance:
+        how much a feature improves the objective when it is used
+        in tree splits.
+
+    Importance is normalized to percentages so the returned
+    values sum to approximately 100%.
+
+    Diagnostic/explainability helper only.
+    Does not change forecasting behaviour.
+    """
+
+    if model is None or not feature_cols:
+        return []
+
+    booster = model.get_booster()
+
+    # XGBoost returns keys such as f0, f1, f2...
+    raw_scores = booster.get_score(
+        importance_type="gain"
+    )
+
+    rows: List[Dict[str, object]] = []
+
+    total_gain = 0.0
+
+    for index, feature_name in enumerate(feature_cols):
+
+        gain = float(
+            raw_scores.get(
+                f"f{index}",
+                0.0,
+            )
+        )
+
+        total_gain += gain
+
+        rows.append({
+            "feature": feature_name,
+            "group": feature_group(feature_name),
+            "gain": gain,
+        })
+
+
+    # Convert raw gain into an easier-to-read percentage.
+    for row in rows:
+
+        if total_gain > 0:
+            row["importance_pct"] = (
+                float(row["gain"])
+                / total_gain
+                * 100.0
+            )
+        else:
+            row["importance_pct"] = 0.0
+
+    rows.sort(
+        key=lambda row: float(row["importance_pct"]),
+        reverse=True,
+    )
+
+    return rows
+
+def feature_group(feature_name: str) -> str:
+    """
+    Assign model features to business-friendly groups.
+    """
+
+    if feature_name in WEATHER_COLS:
+        return "Weather"
+
+    if feature_name in PROMO_COLS:
+        return "Promotions"
+
+    if feature_name in {
+        "NetPrice",
+        "ListPrice",
+        "DiscountRate",
+    }:
+        return "Price"
+
+    if feature_name.startswith("lag_"):
+        return "Demand History"
+
+    if feature_name.startswith("roll_"):
+        return "Demand History"
+
+    if feature_name in {
+        "year",
+        "month",
+        "dow",
+        "doy",
+        "weekofyear",
+    }:
+        return "Seasonality"
+
+    return "Other"
+
+def feature_importance_selected_key(
+    df_exog: pd.DataFrame,
+    period: str,
+    forecast_key: Tuple[str, str, str],
+) -> Dict[str, object]:
+    """
+    Train the current global feature model and return ranked
+    feature importance for a selected forecast element.
+
+    Important:
+    - The model is trained globally using all eligible series.
+    - External factors are included.
+    - forecast_key is validated so the diagnostic corresponds
+      to an existing forecast element.
+    - Nothing is written to the database.
+    - Production forecasting behaviour is unchanged.
+    """
+
+    if period not in GRAIN_CFG:
+        raise ValueError(f"Invalid period: {period}")
+
+    selected_key = tuple(
+        str(x).strip()
+        for x in forecast_key
+    )
+
+    # ---------------------------------------------------------
+    # Validate selected forecast element
+    # ---------------------------------------------------------
+
+    selected_mask = (
+        (
+            df_exog["ProductID"]
+            .astype(str)
+            .str.strip()
+            == selected_key[0]
+        )
+        &
+        (
+            df_exog["ChannelID"]
+            .astype(str)
+            .str.strip()
+            == selected_key[1]
+        )
+        &
+        (
+            df_exog["LocationID"]
+            .astype(str)
+            .str.strip()
+            == selected_key[2]
+        )
+    )
+
+    selected = (
+        df_exog.loc[selected_mask]
+        .sort_values("StartDate_dt")
+        .copy()
+    )
+
+    if selected.empty:
+        return {
+            "ok": False,
+            "reason": "Selected forecast element was not found.",
+            "forecast_key": {
+                "ProductID": selected_key[0],
+                "ChannelID": selected_key[1],
+                "LocationID": selected_key[2],
+            },
+            "period": period,
+            "features": [],
+            "groups": [],
+        }
+
+    # ---------------------------------------------------------
+    # Build global feature-model training dataset
+    # ---------------------------------------------------------
+
+    cfg = GRAIN_CFG[period]
+
+    lags = cfg["lags"]
+    rolls = cfg["rolls"]
+    min_train = cfg["min_train_points"]
+
+    frames = []
+
+    for _, g in df_exog.groupby(KEY_COLS):
+
+        g = (
+            g.sort_values("StartDate_dt")
+            .copy()
+        )
+
+        if len(g) < max(lags + rolls) + 10:
+            continue
+
+        if len(g) < min_train:
+            continue
+
+        frame = build_supervised_frame(
+            g,
+            period,
+            lags,
+            rolls,
+            use_exog=True,
+        )
+
+        if not frame.empty:
+            frames.append(frame)
+
+    if not frames:
+        return {
+            "ok": False,
+            "reason": (
+                "Not enough eligible history to train "
+                "the global feature model."
+            ),
+            "forecast_key": {
+                "ProductID": selected_key[0],
+                "ChannelID": selected_key[1],
+                "LocationID": selected_key[2],
+            },
+            "period": period,
+            "features": [],
+            "groups": [],
+        }
+
+    train_frame = pd.concat(
+        frames,
+        ignore_index=True,
+    )
+
+    if len(train_frame) < 15:
+        return {
+            "ok": False,
+            "reason": (
+                "Global feature training frame contains "
+                "too few observations."
+            ),
+            "forecast_key": {
+                "ProductID": selected_key[0],
+                "ChannelID": selected_key[1],
+                "LocationID": selected_key[2],
+            },
+            "period": period,
+            "features": [],
+            "groups": [],
+        }
+
+    # ---------------------------------------------------------
+    # Train exactly the feature model
+    # ---------------------------------------------------------
+
+    model, feature_cols = train_model(
+        train_frame
+    )
+
+    importance_rows = get_feature_importance(
+        model,
+        feature_cols,
+    )
+
+    # ---------------------------------------------------------
+    # Aggregate importance into business-friendly groups
+    # ---------------------------------------------------------
+
+    group_totals: Dict[str, float] = {}
+
+    for row in importance_rows:
+
+        group = str(
+            row.get("group", "Other")
+        )
+
+        importance = float(
+            row.get("importance_pct", 0.0)
+        )
+
+        group_totals[group] = (
+            group_totals.get(group, 0.0)
+            + importance
+        )
+
+    group_rows = [
+        {
+            "group": group,
+            "importance_pct": importance,
+        }
+        for group, importance in group_totals.items()
+    ]
+
+    group_rows.sort(
+        key=lambda row: float(
+            row["importance_pct"]
+        ),
+        reverse=True,
+    )
+
+    return {
+        "ok": True,
+
+        "forecast_key": {
+            "ProductID": selected_key[0],
+            "ChannelID": selected_key[1],
+            "LocationID": selected_key[2],
+        },
+
+        "period": period,
+
+        "training_rows": int(
+            len(train_frame)
+        ),
+
+        "feature_count": int(
+            len(feature_cols)
+        ),
+
+        "features": importance_rows,
+
+        "groups": group_rows,
+    }
 
 # ============================================================
 # EXOG ATTACH
@@ -873,6 +1270,7 @@ def forecast_one_series(
     weather_daily: Optional[pd.DataFrame] = None,
     weather_future_daily: Optional[pd.DataFrame] = None,
     weather_future_agg: Optional[pd.DataFrame] = None,
+    diagnostic_mode: Optional[str] = None,
     use_observed_weather: bool = False,
 ) -> pd.DataFrame:
     hist = hist.sort_values("StartDate_dt").copy()
@@ -1087,6 +1485,7 @@ def rolling_backtest_selected_key(
     clim_map: Dict[Tuple[str, int], Dict[str, float]],
     promo_agg: pd.DataFrame,
     promo_clim: Dict[Tuple[str, str, str, int], Dict[str, float]],
+    diagnostic_mode: Optional[str] = None,
 ) -> Dict[str, object]:
     """
     Rolling-origin backtest for ONE selected forecast element.
@@ -1268,8 +1667,10 @@ def rolling_backtest_selected_key(
         # Train global model for this historical cutoff
         # ----------------------------------------------------
 
+
         model, feature_cols = train_model(
-            train_frame
+            train_frame,
+            diagnostic_mode=diagnostic_mode,
         )
 
         # ----------------------------------------------------
@@ -1285,6 +1686,7 @@ def rolling_backtest_selected_key(
             model=model,
             feature_cols=feature_cols,
             use_exog=use_exog,
+            diagnostic_mode=diagnostic_mode,
             weather_hist_agg=weather_hist_agg,
             clim_map=clim_map,
             promo_agg=promo_agg,
@@ -1468,6 +1870,213 @@ def rolling_backtest_selected_key(
         ),
 
         "rows": result_rows,
+    }
+
+def compare_backtest_selected_key(
+    df_exog: pd.DataFrame,
+    period: str,
+    forecast_key: Tuple[str, str, str],
+    weather_hist_agg: pd.DataFrame,
+    clim_map: Dict[Tuple[str, int], Dict[str, float]],
+    promo_agg: pd.DataFrame,
+    promo_clim: Dict[Tuple[str, str, str, int], Dict[str, float]],
+) -> Dict[str, object]:
+    """
+    Compare baseline vs external-factor model for one forecast element.
+
+    Baseline:
+        price + calendar + lag/rolling demand features
+
+    Feature model:
+        baseline features + weather + promotions
+
+    Rolling backtest remains leakage-safe.
+    """
+
+    baseline = rolling_backtest_selected_key(
+        df_exog=df_exog,
+        period=period,
+        forecast_key=forecast_key,
+        use_exog=False,
+        weather_hist_agg=weather_hist_agg,
+        clim_map=clim_map,
+        promo_agg=promo_agg,
+        promo_clim=promo_clim,
+    )
+
+    feature = rolling_backtest_selected_key(
+        df_exog=df_exog,
+        period=period,
+        forecast_key=forecast_key,
+        use_exog=True,
+        weather_hist_agg=weather_hist_agg,
+        clim_map=clim_map,
+        promo_agg=promo_agg,
+        promo_clim=promo_clim,
+    )
+
+    if not baseline.get("ok"):
+        return {
+            "ok": False,
+            "reason": f"Baseline backtest failed: {baseline.get('reason')}",
+        }
+
+    if not feature.get("ok"):
+        return {
+            "ok": False,
+            "reason": f"Feature backtest failed: {feature.get('reason')}",
+        }
+
+    baseline_accuracy = baseline.get("accuracy")
+    feature_accuracy = feature.get("accuracy")
+
+    baseline_wape = baseline.get("wape")
+    feature_wape = feature.get("wape")
+
+    accuracy_improvement = None
+    wape_reduction = None
+
+    if baseline_accuracy is not None and feature_accuracy is not None:
+        accuracy_improvement = (
+            float(feature_accuracy)
+            - float(baseline_accuracy)
+        )
+
+    if baseline_wape is not None and feature_wape is not None:
+        wape_reduction = (
+            float(baseline_wape)
+            - float(feature_wape)
+        )
+
+    return {
+        "ok": True,
+
+        "forecast_key": baseline.get("forecast_key"),
+        "period": period,
+
+        "baseline": {
+            "accuracy": baseline.get("accuracy"),
+            "wape": baseline.get("wape"),
+            "bias_pct": baseline.get("bias_pct"),
+            "folds": baseline.get("folds"),
+            "n": baseline.get("n"),
+        },
+
+        "feature": {
+            "accuracy": feature.get("accuracy"),
+            "wape": feature.get("wape"),
+            "bias_pct": feature.get("bias_pct"),
+            "folds": feature.get("folds"),
+            "n": feature.get("n"),
+        },
+
+        "accuracy_improvement": accuracy_improvement,
+        "wape_reduction": wape_reduction,
+
+        "external_factors_improved": (
+            accuracy_improvement is not None
+            and accuracy_improvement > 0
+        ),
+    }
+
+def ablation_backtest_selected_key(
+    df_exog: pd.DataFrame,
+    period: str,
+    forecast_key: Tuple[str, str, str],
+    weather_hist_agg: pd.DataFrame,
+    clim_map: Dict[Tuple[str, int], Dict[str, float]],
+    promo_agg: pd.DataFrame,
+    promo_clim: Dict[Tuple[str, str, str, int], Dict[str, float]],
+) -> Dict[str, object]:
+    """
+    Factor contribution / ablation diagnostic.
+
+    Runs four selected-key rolling backtests:
+
+        baseline   = no external factors
+        weather    = weather only
+        promotions = promotions only
+        all        = weather + promotions
+
+    This function is diagnostic only.
+    It does not change the normal forecasting path.
+    """
+
+    results: Dict[str, Dict[str, object]] = {}
+
+    for mode in (
+        "baseline",
+        "weather",
+        "promotions",
+        "all",
+    ):
+        result = rolling_backtest_selected_key(
+            df_exog=df_exog,
+            period=period,
+            forecast_key=forecast_key,
+
+            use_exog=(mode != "baseline"),
+
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+
+            diagnostic_mode=mode,
+        )
+
+        if not result.get("ok"):
+            return {
+                "ok": False,
+                "reason": (
+                    f"{mode.capitalize()} ablation backtest failed: "
+                    f"{result.get('reason')}"
+                ),
+            }
+
+        results[mode] = {
+            "accuracy": result.get("accuracy"),
+            "wape": result.get("wape"),
+            "bias_pct": result.get("bias_pct"),
+            "folds": result.get("folds"),
+            "n": result.get("n"),
+        }
+
+    baseline_accuracy = results["baseline"]["accuracy"]
+
+    def accuracy_delta(mode: str) -> Optional[float]:
+        value = results[mode]["accuracy"]
+
+        if baseline_accuracy is None or value is None:
+            return None
+
+        return float(value) - float(baseline_accuracy)
+
+    weather_delta = accuracy_delta("weather")
+    promotions_delta = accuracy_delta("promotions")
+    all_delta = accuracy_delta("all")
+
+    return {
+        "ok": True,
+
+        "forecast_key": {
+            "ProductID": forecast_key[0],
+            "ChannelID": forecast_key[1],
+            "LocationID": forecast_key[2],
+        },
+
+        "period": period,
+
+        "baseline": results["baseline"],
+        "weather": results["weather"],
+        "promotions": results["promotions"],
+        "all": results["all"],
+
+        "contribution": {
+            "weather_accuracy_pp": weather_delta,
+            "promotions_accuracy_pp": promotions_delta,
+            "all_external_factors_accuracy_pp": all_delta,
+        },
     }
 
 

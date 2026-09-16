@@ -1,11 +1,12 @@
 <!-- src/app/views/data/weather-correlation/weather-correlation.component.html -->
 
 <div class="container-fluid" style="padding: 16px;">
-  <h2 class="mb-2 fw-bold">External Factor vs Sales Correlation</h2>
+  <h2 class="mb-2 fw-bold">External Factors — Forecast Diagnostics</h2>
+
   <div class="text-muted mb-3">
-    Explore correlation between <span class="fw-semibold">weather variables</span> and
-    <span class="fw-semibold">quantities sold</span> for a specific Product–Channel–Location and period
-    (daily / weekly / monthly).
+    Analyse relationships between external factors and demand,
+    measure their impact on forecast accuracy, and identify which
+    factors provide predictive value.
   </div>
 
   <c-row class="mb-3">
@@ -50,6 +51,7 @@
         </option>
       </select>
     </c-col>
+    
 
     <c-col md="3">
       <label class="form-label mb-1">Period</label>
@@ -58,6 +60,8 @@
         [(ngModel)]="selectedPeriod"
         (ngModelChange)="onSelectionChange()"
       >
+        <option [ngValue]="''">-- Select Period --</option>
+
         <option *ngFor="let p of periods" [ngValue]="p">
           {{ p | titlecase }}
         </option>
@@ -65,329 +69,1534 @@
     </c-col>
   </c-row>
 
-  <c-row class="mb-3">
-    <c-col md="4">
-      <label class="form-label mb-1">Weather metric</label>
-      <select
-        class="form-select"
-        [(ngModel)]="selectedMetric"
-        (ngModelChange)="onMetricChange()"
-      >
-        <option *ngFor="let m of metricOptions" [ngValue]="m.key">
-          {{ m.label }}
-        </option>
-      </select>
-    </c-col>
+  <ul class="nav nav-tabs mb-3">
 
-    <c-col md="4" class="d-flex align-items-end">
+    <li class="nav-item">
       <button
-        class="btn btn-primary"
         type="button"
-        (click)="onReloadClick()"
-        [disabled]="!canLoad() || loading"
+        class="nav-link"
+        [class.active]="activeTab === 'correlation'"
+        (click)="setActiveTab('correlation')"
       >
-        {{ loading ? 'Loading...' : 'Reload correlation' }}
+        Correlation
       </button>
-    </c-col>
+    </li>
+  
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link"
+        [class.active]="activeTab === 'forecastImpact'"
+        (click)="setActiveTab('forecastImpact')"
+      >
+        Forecast Impact
+      </button>
+    </li>
+  
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link"
+        [class.active]="activeTab === 'contribution'"
+        (click)="setActiveTab('contribution')"
+      >
+        Factor Contribution
+      </button>
+    </li>
 
-    <c-col md="4" class="d-flex align-items-end">
-      <div *ngIf="errorMessage" class="text-danger small">
-        {{ errorMessage }}
-      </div>
-    </c-col>
-  </c-row>
+    <li class="nav-item">
+      <button
+        type="button"
+        class="nav-link"
+        [class.active]="activeTab === 'featureImportance'"
+        (click)="setActiveTab('featureImportance')"
+      >
+        Feature Importance
+      </button>
+    </li>
+  
+  </ul>
 
-  <!-- Correlation summary (TOP, full width) -->
-  <c-row>
-    <c-col lg="12" class="mb-3">
-      <c-card>
-        <c-card-header>
-          <div class="fw-semibold">Correlation summary (-1 to +1)</div>
-        </c-card-header>
-        <c-card-body>
-          <div class="mb-3">
-            <div class="small text-muted mb-1">
-              Selected metric: <span class="fw-semibold">{{ getMetricLabel(selectedMetric) }}</span>
+  <div *ngIf="activeTab === 'correlation'">
+
+    <c-row class="mb-3">
+      <c-col md="4">
+        <label class="form-label mb-1">Weather metric</label>
+        <select
+          class="form-select"
+          [(ngModel)]="selectedMetric"
+          (ngModelChange)="onMetricChange()"
+        >
+          <option *ngFor="let m of metricOptions" [ngValue]="m.key">
+            {{ m.label }}
+          </option>
+        </select>
+      </c-col>
+
+      <c-col md="4" class="d-flex align-items-end">
+        <button
+          class="btn btn-primary"
+          type="button"
+          (click)="onReloadClick()"
+          [disabled]="!canLoad() || loading"
+        >
+          {{ loading ? 'Loading...' : 'Reload correlation' }}
+        </button>
+      </c-col>
+
+      <c-col md="4" class="d-flex align-items-end">
+        <div *ngIf="errorMessage" class="text-danger small">
+          {{ errorMessage }}
+        </div>
+      </c-col>
+    </c-row>
+
+    <!-- Correlation summary (TOP, full width) -->
+    <c-row>
+      <c-col lg="12" class="mb-3">
+        <c-card>
+          <c-card-header>
+            <div class="fw-semibold">Correlation summary (-1 to +1)</div>
+          </c-card-header>
+          <c-card-body>
+            <div class="mb-3">
+              <div class="small text-muted mb-1">
+                Selected metric: <span class="fw-semibold">{{ getMetricLabel(selectedMetric) }}</span>
+              </div>
+
+              <!-- Correlation bar -->
+              <div class="small mb-1">
+                r =
+                <span class="fw-semibold">
+                  {{
+                    corrSelected !== null
+                      ? (corrSelected | number : '1.2-2')
+                      : 'NA'
+                  }}
+                </span>
+              </div>
+
+              <div
+                class="position-relative mb-2"
+                style="height: 22px; border-radius: 999px; background: linear-gradient(to right, #dc3545, #f8f9fa, #198754); border: 1px solid #ccc;"
+              >
+                <!-- Center (0) marker -->
+                <div
+                  class="position-absolute"
+                  style="top: -2px; width: 1px; height: 26px; background-color: rgba(0, 0, 0, 0.3); left: 50%;"
+                ></div>
+
+                <!-- Indicator -->
+                <div
+                  class="position-absolute"
+                  style="top: -4px; width: 8px; height: 30px; border-radius: 999px; background-color: #0d6efd;"
+                  [style.left.%]="corrPercent"
+                ></div>
+              </div>
+
+              <div class="small text-muted mt-1">
+                {{ corrDescription }}
+              </div>
             </div>
 
-            <!-- Correlation bar -->
-            <div class="small mb-1">
-              r =
-              <span class="fw-semibold">
-                {{
-                  corrSelected !== null
-                    ? (corrSelected | number : '1.2-2')
-                    : 'NA'
-                }}
+            <hr />
+
+            <!-- Bigger table of all metrics -->
+            <div class="small fw-semibold mb-2">All weather metrics</div>
+            <div class="table-responsive">
+              <table cTable class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th style="width: 70%;">Metric</th>
+                    <th class="text-end" style="width: 30%;">r</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let m of metricOptions">
+                    <td>
+                      {{ m.label }}
+                    </td>
+                    <td class="text-end">
+                      <span
+                        *ngIf="correlations[m.key] !== null; else naCorr"
+                        [ngClass]="{
+                          'text-success': correlations[m.key] !== null && correlations[m.key]! > 0.2,
+                          'text-danger': correlations[m.key] !== null && correlations[m.key]! < -0.2
+                        }"
+                      >
+                        {{ correlations[m.key] | number : '1.2-2' }}
+                      </span>
+                      <ng-template #naCorr>
+                        <span class="text-muted">NA</span>
+                      </ng-template>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </c-card-body>
+          <c-card-footer class="small text-muted">
+            Correlations are computed over the full available history for the selected
+            Product–Channel–Location and period.
+          </c-card-footer>
+        </c-card>
+      </c-col>
+    </c-row>
+
+    <!-- Scatter plot (BOTTOM, full width) -->
+    <c-row>
+      <c-col lg="12" class="mb-3">
+        <c-card>
+          <c-card-header>
+            <div class="fw-semibold">
+              Scatter &amp; quadrants
+              <span class="text-muted small ms-2">
+                ({{ getMetricLabel(selectedMetric) }} vs Quantity)
               </span>
+            </div>
+          </c-card-header>
+          <c-card-body>
+            <div *ngIf="!weatherSales.length && !loading" class="text-muted">
+              Select Product, Channel, Location and click
+              <span class="fw-semibold">Reload correlation</span> to see the plot.
+            </div>
+
+            <div *ngIf="weatherSales.length">
+              <svg
+                [attr.width]="svgWidth"
+                [attr.height]="svgHeight"
+                style="border: 1px solid #e0e0e0; background-color: #fafafa;"
+              >
+                <!-- Axes labels (X/Y text) -->
+                <text
+                  [attr.x]="svgWidth / 2"
+                  [attr.y]="svgHeight - 5"
+                  text-anchor="middle"
+                  class="small"
+                >
+                  {{ getMetricLabel(selectedMetric) }}
+                </text>
+                <text
+                  [attr.x]="15"
+                  [attr.y]="svgHeight / 2"
+                  text-anchor="middle"
+                  [attr.transform]="'rotate(-90 15 ' + (svgHeight / 2) + ')'"
+                  class="small"
+                >
+                  Quantity sold
+                </text>
+
+                <!-- Vertical axis line (X = centerX) -->
+                <line
+                  [attr.x1]="centerX"
+                  [attr.y1]="plotPaddingTop"
+                  [attr.x2]="centerX"
+                  [attr.y2]="svgHeight - plotPaddingBottom"
+                  stroke="#bbbbbb"
+                  stroke-width="1"
+                  stroke-dasharray="4 4"
+                ></line>
+
+                <!-- Horizontal axis line (Y = centerY) -->
+                <line
+                  [attr.x1]="plotPaddingLeft"
+                  [attr.y1]="centerY"
+                  [attr.x2]="svgWidth - plotPaddingRight"
+                  [attr.y2]="centerY"
+                  stroke="#bbbbbb"
+                  stroke-width="1"
+                  stroke-dasharray="4 4"
+                ></line>
+
+                <!-- X-axis main line -->
+                <line
+                  [attr.x1]="plotPaddingLeft"
+                  [attr.y1]="svgHeight - plotPaddingBottom"
+                  [attr.x2]="svgWidth - plotPaddingRight"
+                  [attr.y2]="svgHeight - plotPaddingBottom"
+                  stroke="#333"
+                  stroke-width="1"
+                ></line>
+
+                <!-- Y-axis main line -->
+                <line
+                  [attr.x1]="plotPaddingLeft"
+                  [attr.y1]="plotPaddingTop"
+                  [attr.x2]="plotPaddingLeft"
+                  [attr.y2]="svgHeight - plotPaddingBottom"
+                  stroke="#333"
+                  stroke-width="1"
+                ></line>
+
+                <!-- X-axis ticks & labels (min, mid, max) -->
+                <ng-container *ngIf="xLabels.length === 3">
+                  <g *ngFor="let lbl of xLabels; let idx = index">
+                    <ng-container
+                      *ngIf="idx === 0 || idx === 1 || idx === 2"
+                    >
+                      <line
+                        [attr.x1]="
+                          idx === 0
+                            ? plotPaddingLeft
+                            : idx === 1
+                            ? centerX
+                            : svgWidth - plotPaddingRight
+                        "
+                        [attr.y1]="svgHeight - plotPaddingBottom"
+                        [attr.x2]="
+                          idx === 0
+                            ? plotPaddingLeft
+                            : idx === 1
+                            ? centerX
+                            : svgWidth - plotPaddingRight
+                        "
+                        [attr.y2]="svgHeight - plotPaddingBottom + 4"
+                        stroke="#333"
+                        stroke-width="1"
+                      ></line>
+                      <text
+                        [attr.x]="
+                          idx === 0
+                            ? plotPaddingLeft
+                            : idx === 1
+                            ? centerX
+                            : svgWidth - plotPaddingRight
+                        "
+                        [attr.y]="svgHeight - plotPaddingBottom + 16"
+                        text-anchor="middle"
+                        class="small"
+                      >
+                        {{ lbl }}
+                      </text>
+                    </ng-container>
+                  </g>
+                </ng-container>
+
+                <!-- Y-axis ticks & labels (min, mid, max) -->
+                <ng-container *ngIf="yLabels.length === 3">
+                  <g *ngFor="let lbl of yLabels; let idx = index">
+                    <ng-container
+                      *ngIf="idx === 0 || idx === 1 || idx === 2"
+                    >
+                      <line
+                        [attr.x1]="plotPaddingLeft"
+                        [attr.y1]="
+                          idx === 2
+                            ? plotPaddingTop
+                            : idx === 1
+                            ? centerY
+                            : svgHeight - plotPaddingBottom
+                        "
+                        [attr.x2]="plotPaddingLeft - 4"
+                        [attr.y2]="
+                          idx === 2
+                            ? plotPaddingTop
+                            : idx === 1
+                            ? centerY
+                            : svgHeight - plotPaddingBottom
+                        "
+                        stroke="#333"
+                        stroke-width="1"
+                      ></line>
+                      <text
+                        [attr.x]="plotPaddingLeft - 6"
+                        [attr.y]="
+                          idx === 2
+                            ? plotPaddingTop + 4
+                            : idx === 1
+                            ? centerY + 4
+                            : svgHeight - plotPaddingBottom + 4
+                        "
+                        text-anchor="end"
+                        class="small"
+                      >
+                        {{ lbl }}
+                      </text>
+                    </ng-container>
+                  </g>
+                </ng-container>
+
+                <!-- Scatter points -->
+                <g>
+                  <circle
+                    *ngFor="let p of scatterPoints"
+                    [attr.cx]="p.x"
+                    [attr.cy]="p.y"
+                    r="3"
+                    fill="#0d6efd"
+                    fill-opacity="0.7"
+                  >
+                    <title>
+                      {{ p.date }} | Weather: {{ p.weatherMetric }} | Qty: {{
+                      p.quantity
+                      }}
+                    </title>
+                  </circle>
+                </g>
+              </svg>
+
+              <div class="small text-muted mt-2">
+                Dotted lines split the plot into four quadrants. Top-right =
+                higher weather values &amp; higher sales.
+              </div>
+            </div>
+          </c-card-body>
+        </c-card>
+      </c-col>
+    </c-row>
+  </div>
+
+  <!-- Forecast Impact -->
+  <div *ngIf="activeTab === 'forecastImpact'">
+
+    <c-card class="mb-3">
+      <c-card-body>
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-semibold">Forecast Impact Diagnostic</div>
+            <div class="small text-muted">
+              Compare the baseline forecast against the model using
+              weather and promotions.
+            </div>
+          </div>
+    
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="loadForecastImpact()"
+            [disabled]="!canLoad() || forecastImpactLoading"
+          >
+            {{
+              forecastImpactLoading
+                ? 'Running Diagnostic...'
+                : 'Run Diagnostic'
+            }}
+          </button>
+        </div>
+      </c-card-body>
+    </c-card>
+
+    <!-- Loading -->
+    <c-card class="mb-3" *ngIf="forecastImpactLoading">
+      <c-card-body class="text-center py-5">
+        <div class="fw-semibold mb-2">
+          Running forecast comparison...
+        </div>
+        <div class="text-muted small">
+          Comparing the baseline model with the external-factor model.
+          This may take a little while.
+        </div>
+      </c-card-body>
+    </c-card>
+
+    <!-- Error -->
+    <div
+      *ngIf="forecastImpactError && !forecastImpactLoading"
+      class="alert alert-danger mb-3"
+    >
+      {{ forecastImpactError }}
+    </div>
+
+    <!-- No selection -->
+    <c-card
+      class="mb-3"
+      *ngIf="!canLoad() && !forecastImpactLoading"
+    >
+      <c-card-body class="text-muted">
+        Select a Product, Channel and Location to analyse forecast impact.
+      </c-card-body>
+    </c-card>
+
+    <!-- Results -->
+    <ng-container
+      *ngIf="
+        forecastImpact &&
+        forecastImpact.ok &&
+        !forecastImpactLoading
+      "
+    >
+
+      <!-- Accuracy comparison -->
+      <c-row class="mb-3">
+
+        <c-col md="4" class="mb-3">
+          <c-card class="h-100">
+            <c-card-body class="text-center py-4">
+              <div class="text-muted small mb-2">
+                Baseline Accuracy
+              </div>
+
+              <div class="fs-2 fw-bold">
+                {{
+                  forecastImpact.baseline.accuracy !== null
+                    ? (forecastImpact.baseline.accuracy | number:'1.1-1')
+                    : 'NA'
+                }}<span *ngIf="forecastImpact.baseline.accuracy !== null">%</span>
+              </div>
+
+              <div class="small text-muted mt-2">
+                Without external factors
+              </div>
+            </c-card-body>
+          </c-card>
+        </c-col>
+
+        <c-col md="4" class="mb-3">
+          <c-card class="h-100">
+            <c-card-body class="text-center py-4">
+
+              <div class="text-muted small mb-2">
+                External Factors Accuracy
+              </div>
+
+              <div class="fs-2 fw-bold">
+                {{
+                  forecastImpact.feature.accuracy !== null
+                    ? (forecastImpact.feature.accuracy | number:'1.1-1')
+                    : 'NA'
+                }}<span *ngIf="forecastImpact.feature.accuracy !== null">%</span>
+              </div>
+
+              <div class="small text-muted mt-2">
+                Weather + promotions
+              </div>
+
+            </c-card-body>
+          </c-card>
+        </c-col>
+
+        <c-col md="4" class="mb-3">
+          <c-card class="h-100">
+            <c-card-body class="text-center py-4">
+
+              <div class="text-muted small mb-2">
+                Accuracy Improvement
+              </div>
+
+              <div
+                class="fs-2 fw-bold"
+                [ngClass]="{
+                  'text-success':
+                    forecastImpact.accuracy_improvement !== null &&
+                    forecastImpact.accuracy_improvement > 0,
+
+                  'text-danger':
+                    forecastImpact.accuracy_improvement !== null &&
+                    forecastImpact.accuracy_improvement < 0
+                }"
+              >
+                <ng-container
+                  *ngIf="forecastImpact.accuracy_improvement !== null; else noImprovement"
+                >
+                  {{ forecastImpact.accuracy_improvement > 0 ? '+' : '' }}
+                  {{ forecastImpact.accuracy_improvement | number:'1.1-1' }}
+                  pp
+                </ng-container>
+
+                <ng-template #noImprovement>
+                  NA
+                </ng-template>
+              </div>
+
+              <div class="small text-muted mt-2">
+                Feature model vs baseline
+              </div>
+
+            </c-card-body>
+          </c-card>
+        </c-col>
+
+      </c-row>
+
+
+      <!-- Model quality -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+          <div class="fw-semibold">
+            Model Comparison
+          </div>
+        </c-card-header>
+
+        <c-card-body>
+
+          <div class="table-responsive">
+
+            <table cTable class="table align-middle mb-0">
+
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th class="text-end">Baseline</th>
+                  <th class="text-end">External Factors</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                <tr>
+                  <td>
+                    <div class="fw-semibold">Accuracy</div>
+                    <div class="small text-muted">
+                      Higher is better
+                    </div>
+                  </td>
+
+                  <td class="text-end">
+                    {{
+                      forecastImpact.baseline.accuracy
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      forecastImpact.feature.accuracy
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>
+                    <div class="fw-semibold">WAPE</div>
+                    <div class="small text-muted">
+                      Lower is better
+                    </div>
+                  </td>
+
+                  <td class="text-end">
+                    {{
+                      forecastImpact.baseline.wape
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      forecastImpact.feature.wape
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>
+                    <div class="fw-semibold">Bias</div>
+                    <div class="small text-muted">
+                      Closer to zero is better
+                    </div>
+                  </td>
+
+                  <td class="text-end">
+                    {{
+                      forecastImpact.baseline.bias_pct
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      forecastImpact.feature.bias_pct
+                        | number:'1.1-1'
+                    }}%
+                  </td>
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </c-card-body>
+
+      </c-card>
+
+
+      <!-- Interpretation -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+          <div class="fw-semibold">
+            Diagnostic
+          </div>
+        </c-card-header>
+
+        <c-card-body>
+
+          <div
+            *ngIf="forecastImpact.external_factors_improved"
+            class="alert alert-success mb-0"
+          >
+            <div class="fw-semibold">
+              External factors improved forecast accuracy.
+            </div>
+
+            <div class="small mt-1">
+              Weather and promotion information provided additional
+              predictive value beyond the baseline demand model.
+            </div>
+          </div>
+
+          <div
+            *ngIf="!forecastImpact.external_factors_improved"
+            class="alert alert-warning mb-0"
+          >
+            <div class="fw-semibold">
+              External factors did not improve forecast accuracy.
+            </div>
+
+            <div class="small mt-1">
+              For this forecast element, the baseline model performed
+              as well as or better than the model using weather and
+              promotion information.
+            </div>
+          </div>
+
+        </c-card-body>
+
+        <c-card-footer class="small text-muted">
+          Comparison based on rolling historical backtesting.
+          Accuracy improvement is shown in percentage points (pp).
+        </c-card-footer>
+
+      </c-card>
+
+    </ng-container>
+
+  </div>
+
+  <!-- Factor Contribution -->
+  <div *ngIf="activeTab === 'contribution'">
+
+    <!-- Run diagnostic -->
+    <c-card class="mb-3">
+      <c-card-body>
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-semibold">
+              Factor Contribution Diagnostic
+            </div>
+
+            <div class="small text-muted">
+              Measure the predictive contribution of weather and promotions
+              against the baseline forecast.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="loadFactorContribution()"
+            [disabled]="!canLoad() || factorContributionLoading"
+          >
+            {{
+              factorContributionLoading
+                ? 'Running Diagnostic...'
+                : 'Run Contribution Diagnostic'
+            }}
+          </button>
+        </div>
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Loading -->
+    <c-card
+      class="mb-3"
+      *ngIf="factorContributionLoading"
+    >
+      <c-card-body class="text-center py-5">
+
+        <div class="fw-semibold mb-2">
+          Analysing factor contribution...
+        </div>
+
+        <div class="text-muted small">
+          Comparing baseline, weather, promotions and all external factors.
+          Cached diagnostics will return immediately.
+        </div>
+
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Error -->
+    <div
+      *ngIf="
+        factorContributionError &&
+        !factorContributionLoading
+      "
+      class="alert alert-danger mb-3"
+    >
+      {{ factorContributionError }}
+    </div>
+
+
+    <!-- No selection -->
+    <c-card
+      class="mb-3"
+      *ngIf="
+        !canLoad() &&
+        !factorContributionLoading
+      "
+    >
+      <c-card-body class="text-muted">
+        Select a Product, Channel, Location and Period to analyse
+        factor contribution.
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Results -->
+    <ng-container
+      *ngIf="
+        factorContribution &&
+        factorContribution.ok &&
+        !factorContributionLoading
+      "
+    >
+
+      <!-- Baseline -->
+      <c-card class="mb-3">
+
+        <c-card-body>
+
+          <div
+            class="d-flex justify-content-between align-items-center"
+          >
+
+            <div>
+              <div class="fw-semibold">
+                Baseline Forecast
+              </div>
+
+              <div class="small text-muted">
+                Forecast without weather or promotion factors
+              </div>
+            </div>
+
+            <div class="text-end">
+
+              <div class="small text-muted">
+                Accuracy
+              </div>
+
+              <div class="fs-3 fw-bold">
+                {{
+                  factorContribution.baseline.accuracy !== null
+                    ? (factorContribution.baseline.accuracy
+                        | number:'1.2-2')
+                    : 'NA'
+                }}<span
+                  *ngIf="
+                    factorContribution.baseline.accuracy !== null
+                  "
+                >%</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </c-card-body>
+
+      </c-card>
+
+
+      <!-- Contribution table -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+          <div class="fw-semibold">
+            External Factor Contribution
+          </div>
+        </c-card-header>
+
+        <c-card-body>
+
+          <div class="table-responsive">
+
+            <table
+              cTable
+              class="table align-middle mb-0"
+            >
+
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th class="text-end">
+                    Accuracy
+                  </th>
+                  <th class="text-end">
+                    Contribution
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                <!-- Weather -->
+                <tr>
+
+                  <td>
+                    <div class="fw-semibold">
+                      Weather
+                    </div>
+
+                    <div class="small text-muted">
+                      Baseline + weather
+                    </div>
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      factorContribution.weather.accuracy
+                        | number:'1.2-2'
+                    }}%
+                  </td>
+
+                  <td
+                    class="text-end fw-semibold"
+                    [ngClass]="{
+                      'text-success':
+                        factorContribution.contribution
+                          .weather_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .weather_accuracy_pp > 0,
+
+                      'text-danger':
+                        factorContribution.contribution
+                          .weather_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .weather_accuracy_pp < 0
+                    }"
+                  >
+                    <ng-container
+                      *ngIf="
+                        factorContribution.contribution
+                          .weather_accuracy_pp !== null
+                      "
+                    >
+                      {{
+                        factorContribution.contribution
+                          .weather_accuracy_pp > 0
+                          ? '+'
+                          : ''
+                      }}
+
+                      {{
+                        factorContribution.contribution
+                          .weather_accuracy_pp
+                          | number:'1.2-2'
+                      }}
+                      pp
+                    </ng-container>
+                  </td>
+
+                </tr>
+
+
+                <!-- Promotions -->
+                <tr>
+
+                  <td>
+                    <div class="fw-semibold">
+                      Promotions
+                    </div>
+
+                    <div class="small text-muted">
+                      Baseline + promotions
+                    </div>
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      factorContribution.promotions.accuracy
+                        | number:'1.2-2'
+                    }}%
+                  </td>
+
+                  <td
+                    class="text-end fw-semibold"
+                    [ngClass]="{
+                      'text-success':
+                        factorContribution.contribution
+                          .promotions_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .promotions_accuracy_pp > 0,
+
+                      'text-danger':
+                        factorContribution.contribution
+                          .promotions_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .promotions_accuracy_pp < 0
+                    }"
+                  >
+                    <ng-container
+                      *ngIf="
+                        factorContribution.contribution
+                          .promotions_accuracy_pp !== null
+                      "
+                    >
+
+                      {{
+                        factorContribution.contribution
+                          .promotions_accuracy_pp > 0
+                          ? '+'
+                          : ''
+                      }}
+
+                      {{
+                        factorContribution.contribution
+                          .promotions_accuracy_pp
+                          | number:'1.2-2'
+                      }}
+                      pp
+
+                    </ng-container>
+                  </td>
+
+                </tr>
+
+
+                <!-- All factors -->
+                <tr class="table-light">
+
+                  <td>
+                    <div class="fw-semibold">
+                      All External Factors
+                    </div>
+
+                    <div class="small text-muted">
+                      Weather + promotions
+                    </div>
+                  </td>
+
+                  <td class="text-end fw-semibold">
+                    {{
+                      factorContribution.all.accuracy
+                        | number:'1.2-2'
+                    }}%
+                  </td>
+
+                  <td
+                    class="text-end fw-semibold"
+                    [ngClass]="{
+                      'text-success':
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp > 0,
+
+                      'text-danger':
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp !== null &&
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp < 0
+                    }"
+                  >
+
+                    <ng-container
+                      *ngIf="
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp !== null
+                      "
+                    >
+
+                      {{
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp > 0
+                          ? '+'
+                          : ''
+                      }}
+
+                      {{
+                        factorContribution.contribution
+                          .all_external_factors_accuracy_pp
+                          | number:'1.2-2'
+                      }}
+                      pp
+
+                    </ng-container>
+
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </c-card-body>
+
+        <c-card-footer class="small text-muted">
+          Contribution is the change in forecast accuracy compared with
+          the baseline model. Each factor is evaluated independently;
+          contributions are not expected to add together.
+        </c-card-footer>
+
+      </c-card>
+
+
+      <!-- Interpretation -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+          <div class="fw-semibold">
+            Diagnostic
+          </div>
+        </c-card-header>
+
+        <c-card-body>
+
+          <!-- Meaningful improvement -->
+          <div
+            *ngIf="
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp !== null &&
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp > 0.5
+            "
+            class="alert alert-success mb-0"
+            >
+            <div class="fw-semibold">
+              External factors improved forecast accuracy.
+            </div>
+
+            <div class="small mt-1">
+              Weather and promotion information provided additional
+              predictive value for this forecast element.
+            </div>
+            </div>
+
+
+            <!-- Limited impact -->
+            <div
+            *ngIf="
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp !== null &&
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp >= -0.5 &&
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp <= 0.5
+            "
+            class="alert alert-info mb-0"
+            >
+            <div class="fw-semibold">
+              External factors have little measurable impact.
+            </div>
+
+            <div class="small mt-1">
+              Forecast accuracy is very similar with and without external
+              factors for this forecast element.
+            </div>
+            </div>
+
+
+            <!-- Meaningful deterioration -->
+            <div
+            *ngIf="
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp !== null &&
+              factorContribution.contribution
+                .all_external_factors_accuracy_pp < -0.5
+            "
+            class="alert alert-warning mb-0"
+            >
+            <div class="fw-semibold">
+              External factors reduced forecast accuracy.
+            </div>
+
+            <div class="small mt-1">
+              The baseline demand model performed better than the model
+              using all available external factors.
+            </div>
+          </div>
+
+        </c-card-body>
+
+      </c-card>
+
+    </ng-container>
+
+  </div>
+
+  <!-- Feature Importance -->
+  <div *ngIf="activeTab === 'featureImportance'">
+
+    <!-- Run diagnostic -->
+    <c-card class="mb-3">
+      <c-card-body>
+        <div class="d-flex justify-content-between align-items-center">
+
+          <div>
+            <div class="fw-semibold">
+              Global Model Feature Importance
+            </div>
+
+            <div class="small text-muted">
+              Identify which demand, price, seasonality, weather and promotion
+              variables the forecasting model relies on most.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="loadFeatureImportance()"
+            [disabled]="!canLoad() || featureImportanceLoading"
+          >
+            {{
+              featureImportanceLoading
+                ? 'Analysing Model...'
+                : 'Run Feature Importance'
+            }}
+          </button>
+
+        </div>
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Loading -->
+    <c-card
+      class="mb-3"
+      *ngIf="featureImportanceLoading"
+    >
+      <c-card-body class="text-center py-5">
+
+        <div class="fw-semibold mb-2">
+          Analysing model feature importance...
+        </div>
+
+        <div class="text-muted small">
+          Training the global forecasting model and measuring
+          the relative importance of each feature.
+        </div>
+
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Error -->
+    <div
+      *ngIf="
+        featureImportanceError &&
+        !featureImportanceLoading
+      "
+      class="alert alert-danger mb-3"
+    >
+      {{ featureImportanceError }}
+    </div>
+
+
+    <!-- No selection -->
+    <c-card
+      class="mb-3"
+      *ngIf="
+        !canLoad() &&
+        !featureImportanceLoading
+      "
+    >
+      <c-card-body class="text-muted">
+        Select a Product, Channel, Location and Period to analyse
+        model feature importance.
+      </c-card-body>
+    </c-card>
+
+
+    <!-- Results -->
+    <ng-container
+      *ngIf="
+        featureImportance &&
+        featureImportance.ok &&
+        !featureImportanceLoading
+      "
+    >
+
+      <!-- Summary -->
+      <c-card class="mb-3">
+
+        <c-card-body>
+
+          <div
+            class="d-flex justify-content-between align-items-center"
+          >
+
+            <div>
+
+              <div class="fw-semibold">
+                Global Forecast Model
+              </div>
+
+              <div class="small text-muted">
+                Feature importance for the {{ featureImportance.period }}
+                forecasting model
+              </div>
+
+            </div>
+
+            <div class="text-end">
+
+              <div class="small text-muted">
+                Training Observations
+              </div>
+
+              <div class="fs-4 fw-bold">
+                {{ featureImportance.training_rows | number }}
+              </div>
+
+              <div class="small text-muted">
+                {{ featureImportance.feature_count }} model features
+              </div>
+
+            </div>
+
+          </div>
+
+        </c-card-body>
+
+      </c-card>
+
+
+      <!-- Feature groups -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+          <div class="fw-semibold">
+            Importance by Feature Group
+          </div>
+
+          <div class="small text-muted">
+            Share of total model importance
+          </div>
+        </c-card-header>
+
+        <c-card-body>
+
+          <div
+            *ngFor="
+              let group of featureImportance.groups;
+              let last = last
+            "
+            [class.mb-4]="!last"
+          >
+
+            <div
+              class="d-flex justify-content-between
+                    align-items-center mb-1"
+            >
+
+              <div class="fw-semibold">
+                {{ group.group }}
+              </div>
+
+              <div class="fw-semibold">
+                {{
+                  group.importance_pct
+                    | number:'1.1-1'
+                }}%
+              </div>
+
             </div>
 
             <div
-              class="position-relative mb-2"
-              style="height: 22px; border-radius: 999px; background: linear-gradient(to right, #dc3545, #f8f9fa, #198754); border: 1px solid #ccc;"
+              class="progress"
+              style="height: 12px;"
             >
-              <!-- Center (0) marker -->
               <div
-                class="position-absolute"
-                style="top: -2px; width: 1px; height: 26px; background-color: rgba(0, 0, 0, 0.3); left: 50%;"
-              ></div>
-
-              <!-- Indicator -->
-              <div
-                class="position-absolute"
-                style="top: -4px; width: 8px; height: 30px; border-radius: 999px; background-color: #0d6efd;"
-                [style.left.%]="corrPercent"
+                class="progress-bar"
+                role="progressbar"
+                [style.width.%]="group.importance_pct"
+                [attr.aria-valuenow]="group.importance_pct"
+                aria-valuemin="0"
+                aria-valuemax="100"
               ></div>
             </div>
 
-            <div class="small text-muted mt-1">
-              {{ corrDescription }}
-            </div>
           </div>
 
-          <hr />
+        </c-card-body>
 
-          <!-- Bigger table of all metrics -->
-          <div class="small fw-semibold mb-2">All weather metrics</div>
+        <c-card-footer class="small text-muted">
+          Importance percentages are normalized across all features
+          used by the global XGBoost model.
+        </c-card-footer>
+
+      </c-card>
+
+
+      <!-- Individual features -->
+      <c-card class="mb-3">
+
+        <c-card-header>
+
+          <div class="fw-semibold">
+            Ranked Model Features
+          </div>
+
+          <div class="small text-muted">
+            Individual variables ranked by XGBoost gain importance
+          </div>
+
+        </c-card-header>
+
+        <c-card-body>
+
           <div class="table-responsive">
-            <table cTable class="table table-striped align-middle mb-0">
+
+            <table
+              cTable
+              class="table align-middle mb-0"
+            >
+
               <thead>
                 <tr>
-                  <th style="width: 70%;">Metric</th>
-                  <th class="text-end" style="width: 30%;">r</th>
+                  <th style="width: 50%;">
+                    Feature
+                  </th>
+
+                  <th style="width: 25%;">
+                    Group
+                  </th>
+
+                  <th
+                    class="text-end"
+                    style="width: 25%;"
+                  >
+                    Model Importance
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr *ngFor="let m of metricOptions">
-                  <td>
-                    {{ m.label }}
-                  </td>
-                  <td class="text-end">
-                    <span
-                      *ngIf="correlations[m.key] !== null; else naCorr"
-                      [ngClass]="{
-                        'text-success': correlations[m.key] !== null && correlations[m.key]! > 0.2,
-                        'text-danger': correlations[m.key] !== null && correlations[m.key]! < -0.2
-                      }"
-                    >
-                      {{ correlations[m.key] | number : '1.2-2' }}
-                    </span>
-                    <ng-template #naCorr>
-                      <span class="text-muted">NA</span>
-                    </ng-template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </c-card-body>
-        <c-card-footer class="small text-muted">
-          Correlations are computed over the full available history for the selected
-          Product–Channel–Location and period.
-        </c-card-footer>
-      </c-card>
-    </c-col>
-  </c-row>
 
-  <!-- Scatter plot (BOTTOM, full width) -->
-  <c-row>
-    <c-col lg="12" class="mb-3">
-      <c-card>
+              <tbody>
+
+                <tr
+                  *ngFor="
+                    let item of featureImportance.features;
+                    let i = index
+                  "
+                >
+
+                  <td>
+
+                    <div class="d-flex align-items-center">
+
+                      <span
+                        class="text-muted small me-3"
+                        style="min-width: 24px;"
+                      >
+                        {{ i + 1 }}
+                      </span>
+
+                      <div>
+
+                        <div class="fw-semibold">
+                          {{ getFeatureLabel(item.feature) }}
+                        </div>
+
+                        <div class="small text-muted">
+                          {{ item.feature }}
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </td>
+
+                  <td>
+                    <span class="badge bg-light text-dark border">
+                      {{ item.group }}
+                    </span>
+                  </td>
+
+                  <td class="text-end">
+
+                    <div class="fw-semibold">
+                      {{
+                        item.importance_pct
+                          | number:'1.2-2'
+                      }}%
+                    </div>
+
+                    <div
+                      class="progress mt-1 ms-auto"
+                      style="
+                        height: 5px;
+                        max-width: 140px;
+                      "
+                    >
+                      <div
+                        class="progress-bar"
+                        role="progressbar"
+                        [style.width.%]="item.importance_pct"
+                      ></div>
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </c-card-body>
+
+      </c-card>
+
+
+      <!-- Interpretation -->
+      <c-card class="mb-3">
+
         <c-card-header>
           <div class="fw-semibold">
-            Scatter &amp; quadrants
-            <span class="text-muted small ms-2">
-              ({{ getMetricLabel(selectedMetric) }} vs Quantity)
-            </span>
+            How to Interpret Feature Importance
           </div>
         </c-card-header>
+
         <c-card-body>
-          <div *ngIf="!weatherSales.length && !loading" class="text-muted">
-            Select Product, Channel, Location and click
-            <span class="fw-semibold">Reload correlation</span> to see the plot.
-          </div>
 
-          <div *ngIf="weatherSales.length">
-            <svg
-              [attr.width]="svgWidth"
-              [attr.height]="svgHeight"
-              style="border: 1px solid #e0e0e0; background-color: #fafafa;"
-            >
-              <!-- Axes labels (X/Y text) -->
-              <text
-                [attr.x]="svgWidth / 2"
-                [attr.y]="svgHeight - 5"
-                text-anchor="middle"
-                class="small"
-              >
-                {{ getMetricLabel(selectedMetric) }}
-              </text>
-              <text
-                [attr.x]="15"
-                [attr.y]="svgHeight / 2"
-                text-anchor="middle"
-                [attr.transform]="'rotate(-90 15 ' + (svgHeight / 2) + ')'"
-                class="small"
-              >
-                Quantity sold
-              </text>
+          <div class="alert alert-info mb-3">
 
-              <!-- Vertical axis line (X = centerX) -->
-              <line
-                [attr.x1]="centerX"
-                [attr.y1]="plotPaddingTop"
-                [attr.x2]="centerX"
-                [attr.y2]="svgHeight - plotPaddingBottom"
-                stroke="#bbbbbb"
-                stroke-width="1"
-                stroke-dasharray="4 4"
-              ></line>
-
-              <!-- Horizontal axis line (Y = centerY) -->
-              <line
-                [attr.x1]="plotPaddingLeft"
-                [attr.y1]="centerY"
-                [attr.x2]="svgWidth - plotPaddingRight"
-                [attr.y2]="centerY"
-                stroke="#bbbbbb"
-                stroke-width="1"
-                stroke-dasharray="4 4"
-              ></line>
-
-              <!-- X-axis main line -->
-              <line
-                [attr.x1]="plotPaddingLeft"
-                [attr.y1]="svgHeight - plotPaddingBottom"
-                [attr.x2]="svgWidth - plotPaddingRight"
-                [attr.y2]="svgHeight - plotPaddingBottom"
-                stroke="#333"
-                stroke-width="1"
-              ></line>
-
-              <!-- Y-axis main line -->
-              <line
-                [attr.x1]="plotPaddingLeft"
-                [attr.y1]="plotPaddingTop"
-                [attr.x2]="plotPaddingLeft"
-                [attr.y2]="svgHeight - plotPaddingBottom"
-                stroke="#333"
-                stroke-width="1"
-              ></line>
-
-              <!-- X-axis ticks & labels (min, mid, max) -->
-              <ng-container *ngIf="xLabels.length === 3">
-                <g *ngFor="let lbl of xLabels; let idx = index">
-                  <ng-container
-                    *ngIf="idx === 0 || idx === 1 || idx === 2"
-                  >
-                    <line
-                      [attr.x1]="
-                        idx === 0
-                          ? plotPaddingLeft
-                          : idx === 1
-                          ? centerX
-                          : svgWidth - plotPaddingRight
-                      "
-                      [attr.y1]="svgHeight - plotPaddingBottom"
-                      [attr.x2]="
-                        idx === 0
-                          ? plotPaddingLeft
-                          : idx === 1
-                          ? centerX
-                          : svgWidth - plotPaddingRight
-                      "
-                      [attr.y2]="svgHeight - plotPaddingBottom + 4"
-                      stroke="#333"
-                      stroke-width="1"
-                    ></line>
-                    <text
-                      [attr.x]="
-                        idx === 0
-                          ? plotPaddingLeft
-                          : idx === 1
-                          ? centerX
-                          : svgWidth - plotPaddingRight
-                      "
-                      [attr.y]="svgHeight - plotPaddingBottom + 16"
-                      text-anchor="middle"
-                      class="small"
-                    >
-                      {{ lbl }}
-                    </text>
-                  </ng-container>
-                </g>
-              </ng-container>
-
-              <!-- Y-axis ticks & labels (min, mid, max) -->
-              <ng-container *ngIf="yLabels.length === 3">
-                <g *ngFor="let lbl of yLabels; let idx = index">
-                  <ng-container
-                    *ngIf="idx === 0 || idx === 1 || idx === 2"
-                  >
-                    <line
-                      [attr.x1]="plotPaddingLeft"
-                      [attr.y1]="
-                        idx === 2
-                          ? plotPaddingTop
-                          : idx === 1
-                          ? centerY
-                          : svgHeight - plotPaddingBottom
-                      "
-                      [attr.x2]="plotPaddingLeft - 4"
-                      [attr.y2]="
-                        idx === 2
-                          ? plotPaddingTop
-                          : idx === 1
-                          ? centerY
-                          : svgHeight - plotPaddingBottom
-                      "
-                      stroke="#333"
-                      stroke-width="1"
-                    ></line>
-                    <text
-                      [attr.x]="plotPaddingLeft - 6"
-                      [attr.y]="
-                        idx === 2
-                          ? plotPaddingTop + 4
-                          : idx === 1
-                          ? centerY + 4
-                          : svgHeight - plotPaddingBottom + 4
-                      "
-                      text-anchor="end"
-                      class="small"
-                    >
-                      {{ lbl }}
-                    </text>
-                  </ng-container>
-                </g>
-              </ng-container>
-
-              <!-- Scatter points -->
-              <g>
-                <circle
-                  *ngFor="let p of scatterPoints"
-                  [attr.cx]="p.x"
-                  [attr.cy]="p.y"
-                  r="3"
-                  fill="#0d6efd"
-                  fill-opacity="0.7"
-                >
-                  <title>
-                    {{ p.date }} | Weather: {{ p.weatherMetric }} | Qty: {{
-                    p.quantity
-                    }}
-                  </title>
-                </circle>
-              </g>
-            </svg>
-
-            <div class="small text-muted mt-2">
-              Dotted lines split the plot into four quadrants. Top-right =
-              higher weather values &amp; higher sales.
+            <div class="fw-semibold">
+              Importance shows model reliance, not causal impact.
             </div>
+
+            <div class="small mt-1">
+              A feature with high importance was useful to the
+              XGBoost model when making predictions. It does not mean
+              that the feature causes the same percentage change in
+              demand or forecast accuracy.
+            </div>
+
           </div>
+
+          <div class="small text-muted">
+
+            Use
+            <span class="fw-semibold">Factor Contribution</span>
+            to determine whether weather or promotions actually
+            improve historical forecast accuracy.
+
+            Feature Importance answers a different question:
+            which variables does the trained forecasting model
+            rely on when making predictions?
+
+          </div>
+
         </c-card-body>
+
       </c-card>
-    </c-col>
-  </c-row>
+
+    </ng-container>
+
+  </div>
 </div>

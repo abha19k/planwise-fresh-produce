@@ -478,6 +478,1100 @@ def api_forecast_backtest_selected(
             ),
         )
     
+@router.get("/api/forecast/backtest-compare-selected")
+def api_forecast_backtest_compare_selected(
+    productid: str = Query(...),
+    channelid: str = Query(...),
+    locationid: str = Query(...),
+    period: str = Query("Weekly"),
+    level: str = Query("111"),
+    scenario_id: int = Query(1, ge=1),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
+    """
+    Compare baseline vs external-factor model
+    for ONE selected forecast element.
+
+    Does not write forecast rows.
+    Does not affect normal Run Forecast / Save Forecast.
+    """
+
+    try:
+        _ensure_engine()
+
+        p = (period or "").strip()
+        lvl = str(level).strip()
+
+        
+        if p not in forecast.GRAIN_CFG:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid period: {p}",
+            )
+        
+        # ---------------------------------------------------------
+        # Reuse latest persisted diagnostic when available
+        # ---------------------------------------------------------
+
+        cache_sql = text(f"""
+            SELECT DISTINCT ON (variant)
+                variant,
+                accuracy,
+                wape,
+                bias_pct,
+                n,
+                folds,
+                run_at
+            FROM {_qualified(db_schema, "forecast_backtest_result")}
+            WHERE scenario_id = :scenario_id
+            AND level = :level
+            AND period = :period
+            AND product_id = :product_id
+            AND channel_id = :channel_id
+            AND location_id = :location_id
+            AND variant IN ('baseline', 'feat')
+            ORDER BY variant, run_at DESC;
+        """)
+
+        with ENGINE.connect() as conn:
+            cached_rows = conn.execute(
+                cache_sql,
+                {
+                    "scenario_id": int(scenario_id),
+                    "level": lvl,
+                    "period": p,
+                    "product_id": productid,
+                    "channel_id": channelid,
+                    "location_id": locationid,
+                },
+            ).mappings().all()
+
+        cached = {row["variant"]: row for row in cached_rows}
+
+        if "baseline" in cached and "feat" in cached:
+            baseline = cached["baseline"]
+            feature = cached["feat"]
+
+            baseline_accuracy = baseline["accuracy"]
+            feature_accuracy = feature["accuracy"]
+
+            baseline_wape = baseline["wape"]
+            feature_wape = feature["wape"]
+
+            accuracy_improvement = (
+                float(feature_accuracy) - float(baseline_accuracy)
+                if baseline_accuracy is not None
+                and feature_accuracy is not None
+                else None
+            )
+
+            wape_reduction = (
+                float(baseline_wape) - float(feature_wape)
+                if baseline_wape is not None
+                and feature_wape is not None
+                else None
+            )
+
+            return {
+                "scenario_id": scenario_id,
+                "level": lvl,
+                "ok": True,
+                "forecast_key": {
+                    "ProductID": productid,
+                    "ChannelID": channelid,
+                    "LocationID": locationid,
+                },
+                "period": p,
+
+                "baseline": {
+                    "accuracy": baseline_accuracy,
+                    "wape": baseline_wape,
+                    "bias_pct": baseline["bias_pct"],
+                    "folds": baseline["folds"],
+                    "n": baseline["n"],
+                },
+
+                "feature": {
+                    "accuracy": feature_accuracy,
+                    "wape": feature_wape,
+                    "bias_pct": feature["bias_pct"],
+                    "folds": feature["folds"],
+                    "n": feature["n"],
+                },
+
+                "accuracy_improvement": accuracy_improvement,
+                "wape_reduction": wape_reduction,
+
+                "external_factors_improved": (
+                    accuracy_improvement is not None
+                    and accuracy_improvement > 0
+                ),
+
+                "cached": True,
+            }
+
+        # --------------------------------------------------
+        # Load scenario history
+        # --------------------------------------------------
+
+        hist_df = _get_history_with_fallback(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            level=lvl,
+            period=p,
+        )
+
+        if hist_df is None or hist_df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history found.",
+            )
+
+        # --------------------------------------------------
+        # Weather
+        # --------------------------------------------------
+
+        weather_df = _scenario_weather_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_WEATHER_TABLE,
+        )
+
+        weather_df = _normalize_weather_cols(
+            weather_df
+        )
+
+        # --------------------------------------------------
+        # Promotions
+        # --------------------------------------------------
+
+        promo_df = _scenario_promotions_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_PROMO_TABLE,
+        )
+
+        promo_df = _normalize_promo_cols(
+            promo_df
+        )
+
+        # --------------------------------------------------
+        # Prepare history
+        # --------------------------------------------------
+
+        df = hist_df.copy()
+
+        for c in forecast.KEY_COLS:
+            df[c] = (
+                df[c]
+                .astype(str)
+                .str.strip()
+            )
+
+        df["Qty"] = (
+            forecast.to_num(df["Qty"])
+            .fillna(0.0)
+        )
+
+        if "NetPrice" not in df.columns:
+            df["NetPrice"] = None
+
+        if "ListPrice" not in df.columns:
+            df["ListPrice"] = None
+
+        df["NetPrice"] = forecast.to_num(
+            df["NetPrice"]
+        )
+
+        df["ListPrice"] = forecast.to_num(
+            df["ListPrice"]
+        )
+
+        if "UOM" not in df.columns:
+            df["UOM"] = "KG"
+
+        df["UOM"] = (
+            df["UOM"]
+            .astype(str)
+            .fillna("KG")
+        )
+
+        df["StartDate_dt"] = forecast.parse_date(
+            df["StartDate"]
+        )
+
+        df["Period"] = (
+            df["Period"]
+            .astype(str)
+            .str.strip()
+        )
+
+        df = df[
+            (df["Period"] == p)
+            & df["StartDate_dt"].notna()
+        ].copy()
+
+        if df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history after period filtering.",
+            )
+
+        df = df.sort_values(
+            forecast.KEY_COLS + ["StartDate_dt"]
+        )
+
+        df["NetPrice"] = (
+            df.groupby(forecast.KEY_COLS)["NetPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        df["ListPrice"] = (
+            df.groupby(forecast.KEY_COLS)["ListPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        # --------------------------------------------------
+        # Build exogenous inputs
+        # --------------------------------------------------
+
+        weather_hist_agg, clim_map = (
+            forecast.build_weather_climatology(
+                weather_df,
+                p,
+            )
+        )
+
+        promo_daily = (
+            forecast.expand_promotions_to_daily(
+                promo_df
+            )
+        )
+
+        promo_agg = (
+            forecast.aggregate_promotions_to_period(
+                promo_daily,
+                p,
+            )
+        )
+
+        promo_clim = (
+            forecast.build_promo_climatology(
+                promo_agg,
+                p,
+            )
+        )
+
+        df_exog = forecast.attach_exog_to_history(
+            df,
+            weather_hist_agg,
+            promo_agg,
+        )
+
+        # --------------------------------------------------
+        # Compare baseline vs feature model
+        # --------------------------------------------------
+
+        result = forecast.compare_backtest_selected_key(
+            df_exog=df_exog,
+            period=p,
+            forecast_key=(
+                productid,
+                channelid,
+                locationid,
+            ),
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        if not result.get("ok"):
+            return {
+                "scenario_id": scenario_id,
+                "level": lvl,
+                **result,
+            }
+
+        # --------------------------------------------------
+        # Save both summaries
+        # --------------------------------------------------
+
+        insert_sql = text(f"""
+            INSERT INTO {_qualified(db_schema, "forecast_backtest_result")} (
+                scenario_id,
+                level,
+                period,
+                product_id,
+                channel_id,
+                location_id,
+                variant,
+                accuracy,
+                wape,
+                bias_pct,
+                n,
+                folds
+            )
+            VALUES (
+                :scenario_id,
+                :level,
+                :period,
+                :product_id,
+                :channel_id,
+                :location_id,
+                :variant,
+                :accuracy,
+                :wape,
+                :bias_pct,
+                :n,
+                :folds
+            );
+        """)
+
+        baseline = result["baseline"]
+        feature = result["feature"]
+
+        with ENGINE.begin() as conn:
+
+            conn.execute(
+                insert_sql,
+                {
+                    "scenario_id": int(scenario_id),
+                    "level": lvl,
+                    "period": p,
+                    "product_id": productid,
+                    "channel_id": channelid,
+                    "location_id": locationid,
+                    "variant": "baseline",
+                    "accuracy": baseline.get("accuracy"),
+                    "wape": baseline.get("wape"),
+                    "bias_pct": baseline.get("bias_pct"),
+                    "n": int(baseline.get("n") or 0),
+                    "folds": int(baseline.get("folds") or 0),
+                },
+            )
+
+            conn.execute(
+                insert_sql,
+                {
+                    "scenario_id": int(scenario_id),
+                    "level": lvl,
+                    "period": p,
+                    "product_id": productid,
+                    "channel_id": channelid,
+                    "location_id": locationid,
+                    "variant": "feat",
+                    "accuracy": feature.get("accuracy"),
+                    "wape": feature.get("wape"),
+                    "bias_pct": feature.get("bias_pct"),
+                    "n": int(feature.get("n") or 0),
+                    "folds": int(feature.get("folds") or 0),
+                },
+            )
+
+        return {
+            "scenario_id": scenario_id,
+            "level": lvl,
+            **result,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        tb = traceback.format_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Selected-key comparison backtest failed: "
+                f"{e}\n\n{tb}"
+            ),
+        )
+    
+@router.get("/api/forecast/backtest-contribution-selected")
+def api_forecast_backtest_contribution_selected(
+    productid: str = Query(...),
+    channelid: str = Query(...),
+    locationid: str = Query(...),
+    period: str = Query("Weekly"),
+    level: str = Query("111"),
+    scenario_id: int = Query(1, ge=1),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(require_roles("admin", "planner", "viewer")),
+):
+    """
+    Factor contribution diagnostic for one selected forecast element.
+
+    Compares:
+        baseline
+        baseline + weather
+        baseline + promotions
+        baseline + weather + promotions
+
+    Contributions are accuracy percentage-point differences
+    relative to the baseline model.
+    """
+
+    try:
+        _ensure_engine()
+
+        p = (period or "").strip()
+        lvl = str(level).strip()
+
+        if p not in forecast.GRAIN_CFG:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid period: {p}",
+            )
+
+        # ---------------------------------------------------------
+        # Check cache
+        # ---------------------------------------------------------
+
+        cache_sql = text(f"""
+            SELECT DISTINCT ON (variant)
+                variant,
+                accuracy,
+                wape,
+                bias_pct,
+                n,
+                folds,
+                run_at
+            FROM {_qualified(db_schema, "forecast_backtest_result")}
+            WHERE scenario_id = :scenario_id
+              AND level = :level
+              AND period = :period
+              AND product_id = :product_id
+              AND channel_id = :channel_id
+              AND location_id = :location_id
+              AND variant IN (
+                  'baseline',
+                  'weather',
+                  'promotions',
+                  'feat'
+              )
+            ORDER BY variant, run_at DESC;
+        """)
+
+        with ENGINE.connect() as conn:
+            cached_rows = conn.execute(
+                cache_sql,
+                {
+                    "scenario_id": int(scenario_id),
+                    "level": lvl,
+                    "period": p,
+                    "product_id": productid,
+                    "channel_id": channelid,
+                    "location_id": locationid,
+                },
+            ).mappings().all()
+
+        cached = {
+            row["variant"]: row
+            for row in cached_rows
+        }
+
+        # ---------------------------------------------------------
+        # If all four already exist, return immediately
+        # ---------------------------------------------------------
+
+        required_variants = {
+            "baseline",
+            "weather",
+            "promotions",
+            "feat",
+        }
+
+        if required_variants.issubset(cached.keys()):
+
+            baseline = cached["baseline"]
+            weather = cached["weather"]
+            promotions = cached["promotions"]
+            all_factors = cached["feat"]
+
+            baseline_accuracy = baseline["accuracy"]
+
+            def delta(value):
+                if baseline_accuracy is None or value is None:
+                    return None
+
+                return (
+                    float(value)
+                    - float(baseline_accuracy)
+                )
+
+            return {
+                "scenario_id": scenario_id,
+                "level": lvl,
+                "ok": True,
+
+                "forecast_key": {
+                    "ProductID": productid,
+                    "ChannelID": channelid,
+                    "LocationID": locationid,
+                },
+
+                "period": p,
+
+                "baseline": {
+                    "accuracy": baseline["accuracy"],
+                    "wape": baseline["wape"],
+                    "bias_pct": baseline["bias_pct"],
+                    "folds": baseline["folds"],
+                    "n": baseline["n"],
+                },
+
+                "weather": {
+                    "accuracy": weather["accuracy"],
+                    "wape": weather["wape"],
+                    "bias_pct": weather["bias_pct"],
+                    "folds": weather["folds"],
+                    "n": weather["n"],
+                },
+
+                "promotions": {
+                    "accuracy": promotions["accuracy"],
+                    "wape": promotions["wape"],
+                    "bias_pct": promotions["bias_pct"],
+                    "folds": promotions["folds"],
+                    "n": promotions["n"],
+                },
+
+                "all": {
+                    "accuracy": all_factors["accuracy"],
+                    "wape": all_factors["wape"],
+                    "bias_pct": all_factors["bias_pct"],
+                    "folds": all_factors["folds"],
+                    "n": all_factors["n"],
+                },
+
+                "contribution": {
+                    "weather_accuracy_pp":
+                        delta(weather["accuracy"]),
+
+                    "promotions_accuracy_pp":
+                        delta(promotions["accuracy"]),
+
+                    "all_external_factors_accuracy_pp":
+                        delta(all_factors["accuracy"]),
+                },
+
+                "cached": True,
+            }
+
+        # ---------------------------------------------------------
+        # Load scenario history
+        # ---------------------------------------------------------
+
+        hist_df = _get_history_with_fallback(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            level=lvl,
+            period=p,
+        )
+
+        if hist_df is None or hist_df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history found.",
+            )
+
+        # ---------------------------------------------------------
+        # Weather
+        # ---------------------------------------------------------
+
+        weather_df = _scenario_weather_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_WEATHER_TABLE,
+        )
+
+        weather_df = _normalize_weather_cols(
+            weather_df
+        )
+
+        # ---------------------------------------------------------
+        # Promotions
+        # ---------------------------------------------------------
+
+        promo_df = _scenario_promotions_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_PROMO_TABLE,
+        )
+
+        promo_df = _normalize_promo_cols(
+            promo_df
+        )
+
+        # ---------------------------------------------------------
+        # Prepare history
+        # ---------------------------------------------------------
+
+        df = hist_df.copy()
+
+        for c in forecast.KEY_COLS:
+            df[c] = (
+                df[c]
+                .astype(str)
+                .str.strip()
+            )
+
+        df["Qty"] = (
+            forecast.to_num(df["Qty"])
+            .fillna(0.0)
+        )
+
+        if "NetPrice" not in df.columns:
+            df["NetPrice"] = None
+
+        if "ListPrice" not in df.columns:
+            df["ListPrice"] = None
+
+        df["NetPrice"] = forecast.to_num(
+            df["NetPrice"]
+        )
+
+        df["ListPrice"] = forecast.to_num(
+            df["ListPrice"]
+        )
+
+        if "UOM" not in df.columns:
+            df["UOM"] = "KG"
+
+        df["UOM"] = (
+            df["UOM"]
+            .astype(str)
+            .fillna("KG")
+        )
+
+        df["StartDate_dt"] = forecast.parse_date(
+            df["StartDate"]
+        )
+
+        df["Period"] = (
+            df["Period"]
+            .astype(str)
+            .str.strip()
+        )
+
+        df = df[
+            (df["Period"] == p)
+            & df["StartDate_dt"].notna()
+        ].copy()
+
+        if df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history after period filtering.",
+            )
+
+        df = df.sort_values(
+            forecast.KEY_COLS + ["StartDate_dt"]
+        )
+
+        df["NetPrice"] = (
+            df.groupby(forecast.KEY_COLS)["NetPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        df["ListPrice"] = (
+            df.groupby(forecast.KEY_COLS)["ListPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        # ---------------------------------------------------------
+        # Build external-factor inputs
+        # ---------------------------------------------------------
+
+        weather_hist_agg, clim_map = (
+            forecast.build_weather_climatology(
+                weather_df,
+                p,
+            )
+        )
+
+        promo_daily = (
+            forecast.expand_promotions_to_daily(
+                promo_df
+            )
+        )
+
+        promo_agg = (
+            forecast.aggregate_promotions_to_period(
+                promo_daily,
+                p,
+            )
+        )
+
+        promo_clim = (
+            forecast.build_promo_climatology(
+                promo_agg,
+                p,
+            )
+        )
+
+        df_exog = forecast.attach_exog_to_history(
+            df,
+            weather_hist_agg,
+            promo_agg,
+        )
+
+        # ---------------------------------------------------------
+        # Run four-model ablation diagnostic
+        # ---------------------------------------------------------
+
+        result = forecast.ablation_backtest_selected_key(
+            df_exog=df_exog,
+            period=p,
+            forecast_key=(
+                productid,
+                channelid,
+                locationid,
+            ),
+            weather_hist_agg=weather_hist_agg,
+            clim_map=clim_map,
+            promo_agg=promo_agg,
+            promo_clim=promo_clim,
+        )
+
+        if not result.get("ok"):
+            return {
+                "scenario_id": scenario_id,
+                "level": lvl,
+                **result,
+            }
+
+        # ---------------------------------------------------------
+        # Persist results
+        # ---------------------------------------------------------
+
+        insert_sql = text(f"""
+            INSERT INTO {_qualified(
+                db_schema,
+                "forecast_backtest_result"
+            )} (
+                scenario_id,
+                level,
+                period,
+                product_id,
+                channel_id,
+                location_id,
+                variant,
+                accuracy,
+                wape,
+                bias_pct,
+                n,
+                folds
+            )
+            VALUES (
+                :scenario_id,
+                :level,
+                :period,
+                :product_id,
+                :channel_id,
+                :location_id,
+                :variant,
+                :accuracy,
+                :wape,
+                :bias_pct,
+                :n,
+                :folds
+            );
+        """)
+
+        variant_map = {
+            "baseline": "baseline",
+            "weather": "weather",
+            "promotions": "promotions",
+            "all": "feat",
+        }
+
+        with ENGINE.begin() as conn:
+
+            for result_name, db_variant in variant_map.items():
+
+                metrics = result[result_name]
+
+                conn.execute(
+                    insert_sql,
+                    {
+                        "scenario_id": int(scenario_id),
+                        "level": lvl,
+                        "period": p,
+                        "product_id": productid,
+                        "channel_id": channelid,
+                        "location_id": locationid,
+                        "variant": db_variant,
+                        "accuracy": metrics.get("accuracy"),
+                        "wape": metrics.get("wape"),
+                        "bias_pct": metrics.get("bias_pct"),
+                        "n": int(metrics.get("n") or 0),
+                        "folds": int(metrics.get("folds") or 0),
+                    },
+                )
+
+        return {
+            "scenario_id": scenario_id,
+            "level": lvl,
+            **result,
+            "cached": False,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        tb = traceback.format_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Selected-key factor contribution "
+                f"backtest failed: {e}\n\n{tb}"
+            ),
+        )
+    
+
+@router.get("/api/forecast/feature-importance-selected")
+def api_forecast_feature_importance_selected(
+    productid: str = Query(...),
+    channelid: str = Query(...),
+    locationid: str = Query(...),
+    period: str = Query("Weekly"),
+    level: str = Query("111"),
+    scenario_id: int = Query(1, ge=1),
+    db_schema: str = Query(DEFAULT_SCHEMA),
+    current_user=Depends(
+        require_roles("admin", "planner", "viewer")
+    ),
+):
+    """
+    Global XGBoost feature importance diagnostic.
+
+    The selected forecast element provides the diagnostic context,
+    while the model itself is trained globally using all eligible
+    series for the selected level / period / scenario.
+
+    Nothing is written to the database.
+    """
+
+    try:
+        _ensure_engine()
+
+        p = (period or "").strip()
+        lvl = str(level).strip()
+
+        if p not in forecast.GRAIN_CFG:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid period: {p}",
+            )
+
+        # ---------------------------------------------------------
+        # History
+        # ---------------------------------------------------------
+
+        hist_df = _get_history_with_fallback(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            level=lvl,
+            period=p,
+        )
+
+        if hist_df is None or hist_df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history found.",
+            )
+
+        # ---------------------------------------------------------
+        # Weather
+        # ---------------------------------------------------------
+
+        weather_df = _scenario_weather_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_WEATHER_TABLE,
+        )
+
+        weather_df = _normalize_weather_cols(
+            weather_df
+        )
+
+        # ---------------------------------------------------------
+        # Promotions
+        # ---------------------------------------------------------
+
+        promo_df = _scenario_promotions_df(
+            db_schema=db_schema,
+            scenario_id=scenario_id,
+            table_name=DEFAULT_PROMO_TABLE,
+        )
+
+        promo_df = _normalize_promo_cols(
+            promo_df
+        )
+
+        # ---------------------------------------------------------
+        # Prepare history
+        # Same preparation used by our other diagnostics
+        # ---------------------------------------------------------
+
+        df = hist_df.copy()
+
+        for c in forecast.KEY_COLS:
+            df[c] = (
+                df[c]
+                .astype(str)
+                .str.strip()
+            )
+
+        df["Qty"] = (
+            forecast.to_num(df["Qty"])
+            .fillna(0.0)
+        )
+
+        if "NetPrice" not in df.columns:
+            df["NetPrice"] = None
+
+        if "ListPrice" not in df.columns:
+            df["ListPrice"] = None
+
+        df["NetPrice"] = forecast.to_num(
+            df["NetPrice"]
+        )
+
+        df["ListPrice"] = forecast.to_num(
+            df["ListPrice"]
+        )
+
+        if "UOM" not in df.columns:
+            df["UOM"] = "KG"
+
+        df["UOM"] = (
+            df["UOM"]
+            .astype(str)
+            .fillna("KG")
+        )
+
+        df["StartDate_dt"] = forecast.parse_date(
+            df["StartDate"]
+        )
+
+        df["Period"] = (
+            df["Period"]
+            .astype(str)
+            .str.strip()
+        )
+
+        df = df[
+            (df["Period"] == p)
+            & df["StartDate_dt"].notna()
+        ].copy()
+
+        if df.empty:
+            raise HTTPException(
+                status_code=404,
+                detail="No history after period filtering.",
+            )
+
+        df = df.sort_values(
+            forecast.KEY_COLS
+            + ["StartDate_dt"]
+        )
+
+        df["NetPrice"] = (
+            df.groupby(forecast.KEY_COLS)["NetPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        df["ListPrice"] = (
+            df.groupby(forecast.KEY_COLS)["ListPrice"]
+            .ffill()
+            .bfill()
+        )
+
+        # ---------------------------------------------------------
+        # Build external-factor history
+        # ---------------------------------------------------------
+
+        weather_hist_agg, clim_map = (
+            forecast.build_weather_climatology(
+                weather_df,
+                p,
+            )
+        )
+
+        promo_daily = (
+            forecast.expand_promotions_to_daily(
+                promo_df
+            )
+        )
+
+        promo_agg = (
+            forecast.aggregate_promotions_to_period(
+                promo_daily,
+                p,
+            )
+        )
+
+        df_exog = forecast.attach_exog_to_history(
+            df,
+            weather_hist_agg,
+            promo_agg,
+        )
+
+        # ---------------------------------------------------------
+        # Feature importance
+        # ---------------------------------------------------------
+
+        result = (
+            forecast.feature_importance_selected_key(
+                df_exog=df_exog,
+                period=p,
+                forecast_key=(
+                    productid,
+                    channelid,
+                    locationid,
+                ),
+            )
+        )
+
+        if not result.get("ok"):
+            return {
+                "scenario_id": scenario_id,
+                "level": lvl,
+                **result,
+            }
+
+        return {
+            "scenario_id": scenario_id,
+            "level": lvl,
+            **result,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        tb = traceback.format_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Feature importance diagnostic failed: "
+                f"{e}\n\n{tb}"
+            ),
+        )
+    
 @router.get("/api/forecast/backtest-latest")
 def api_forecast_backtest_latest(
     productid: str = Query(...),

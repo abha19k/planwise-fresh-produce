@@ -16,6 +16,11 @@ import {
 } from '@coreui/angular';
 
 type PeriodType = 'daily' | 'weekly' | 'monthly';
+type AnalysisTab =
+  | 'correlation'
+  | 'forecastImpact'
+  | 'contribution'
+  | 'featureImportance';
 
 interface Product {
   ProductID: string;
@@ -53,8 +58,105 @@ interface CorrelationResponse {
   TempMax: number | null;
   RainMm: number | null;
   SnowCm: number | null;
+  WindMax: number | null;
+  SunHours: number | null;
   [key: string]: number | null;
 }
+
+interface ForecastImpactResponse {
+  scenario_id: number;
+  level: string;
+  ok: boolean;
+  period: string;
+
+  baseline: {
+    accuracy: number | null;
+    wape: number | null;
+    bias_pct: number | null;
+    folds: number;
+    n: number;
+  };
+
+  feature: {
+    accuracy: number | null;
+    wape: number | null;
+    bias_pct: number | null;
+    folds: number;
+    n: number;
+  };
+
+  accuracy_improvement: number | null;
+  wape_reduction: number | null;
+  external_factors_improved: boolean;
+}
+
+interface FactorMetrics {
+  accuracy: number | null;
+  wape: number | null;
+  bias_pct: number | null;
+  folds: number;
+  n: number;
+}
+
+interface FactorContributionResponse {
+  scenario_id: number;
+  level: string;
+  ok: boolean;
+  period: string;
+
+  forecast_key: {
+    ProductID: string;
+    ChannelID: string;
+    LocationID: string;
+  };
+
+  baseline: FactorMetrics;
+  weather: FactorMetrics;
+  promotions: FactorMetrics;
+  all: FactorMetrics;
+
+  contribution: {
+    weather_accuracy_pp: number | null;
+    promotions_accuracy_pp: number | null;
+    all_external_factors_accuracy_pp: number | null;
+  };
+
+  cached: boolean;
+}
+
+interface FeatureImportanceItem {
+  feature: string;
+  group: string;
+  gain: number;
+  importance_pct: number;
+}
+
+interface FeatureImportanceGroup {
+  group: string;
+  importance_pct: number;
+}
+
+interface FeatureImportanceResponse {
+  scenario_id: number;
+  level: string;
+  ok: boolean;
+  period: string;
+
+  forecast_key: {
+    ProductID: string;
+    ChannelID: string;
+    LocationID: string;
+  };
+
+  training_rows: number;
+  feature_count: number;
+
+  features: FeatureImportanceItem[];
+  groups: FeatureImportanceGroup[];
+
+  reason?: string;
+}
+
 
 @Component({
   selector: 'app-weather-correlation',
@@ -87,7 +189,7 @@ export class WeatherCorrelationComponent implements OnInit {
   selectedLocationId = '';
 
   periods: PeriodType[] = ['daily', 'weekly', 'monthly'];
-  selectedPeriod: PeriodType = 'daily';
+  selectedPeriod: PeriodType | '' = '';
 
   metricOptions = [
     { key: 'TempAvg', label: 'Average Temperature' },
@@ -95,8 +197,171 @@ export class WeatherCorrelationComponent implements OnInit {
     { key: 'TempMax', label: 'Maximum Temperature' },
     { key: 'RainMm', label: 'Rainfall (mm)' },
     { key: 'SnowCm', label: 'Snowfall (cm)' },
+    { key: 'WindMax', label: 'Maximum Wind Speed' },
+    { key: 'SunHours', label: 'Sunshine Hours' },
   ];
+
+  forecastImpact: ForecastImpactResponse | null = null;
+  forecastImpactLoading = false;
+  forecastImpactError = '';
+
+  factorContribution: FactorContributionResponse | null = null;
+  factorContributionLoading = false;
+  factorContributionError = '';
+
+  featureImportance: FeatureImportanceResponse | null = null;
+  featureImportanceLoading = false;
+  featureImportanceError = '';
+
   selectedMetric = 'TempAvg';
+
+  activeTab: AnalysisTab = 'correlation';
+
+  setActiveTab(tab: AnalysisTab): void {
+    this.activeTab = tab;
+  }
+
+
+  loadForecastImpact(): void {
+    if (!this.canLoad()) {
+      return;
+    }
+  
+    this.forecastImpactLoading = true;
+    this.forecastImpactError = '';
+  
+    const params = new HttpParams()
+      .set('productid', this.selectedProductId)
+      .set('channelid', this.selectedChannelId)
+      .set('locationid', this.selectedLocationId)
+      .set(
+        'period',
+        this.selectedPeriod === 'daily'
+          ? 'Daily'
+          : this.selectedPeriod === 'weekly'
+          ? 'Weekly'
+          : 'Monthly'
+      )
+      .set('level', '111')
+      .set('scenario_id', '1');
+  
+    this.http
+      .get<ForecastImpactResponse>(
+        `${this.apiBase}/api/forecast/backtest-compare-selected`,
+        { params }
+      )
+      .subscribe({
+        next: (response) => {
+          this.forecastImpact = response;
+          this.forecastImpactLoading = false;
+        },
+  
+        error: (error) => {
+          console.error('Forecast impact error:', error);
+  
+          this.forecastImpactError =
+            error?.error?.detail ||
+            'Unable to calculate forecast impact.';
+  
+          this.forecastImpactLoading = false;
+        },
+      });
+  }
+
+  loadFactorContribution(): void {
+    if (!this.canLoad()) {
+      return;
+    }
+  
+    this.factorContributionLoading = true;
+    this.factorContributionError = '';
+    this.factorContribution = null;
+  
+    const params = new HttpParams()
+      .set('productid', this.selectedProductId)
+      .set('channelid', this.selectedChannelId)
+      .set('locationid', this.selectedLocationId)
+      .set(
+        'period',
+        this.selectedPeriod === 'daily'
+          ? 'Daily'
+          : this.selectedPeriod === 'weekly'
+          ? 'Weekly'
+          : 'Monthly'
+      )
+      .set('level', '111')
+      .set('scenario_id', '1');
+  
+    this.http
+      .get<FactorContributionResponse>(
+        `${this.apiBase}/api/forecast/backtest-contribution-selected`,
+        { params }
+      )
+      .subscribe({
+        next: (response) => {
+          this.factorContribution = response;
+          this.factorContributionLoading = false;
+        },
+  
+        error: (error) => {
+          console.error('Factor contribution error:', error);
+  
+          this.factorContributionError =
+            error?.error?.detail ||
+            'Unable to calculate factor contribution.';
+  
+          this.factorContributionLoading = false;
+        },
+      });
+  }
+
+  loadFeatureImportance(): void {
+    if (!this.canLoad()) {
+      return;
+    }
+  
+    this.featureImportanceLoading = true;
+    this.featureImportanceError = '';
+    this.featureImportance = null;
+  
+    const params = new HttpParams()
+      .set('productid', this.selectedProductId)
+      .set('channelid', this.selectedChannelId)
+      .set('locationid', this.selectedLocationId)
+      .set(
+        'period',
+        this.selectedPeriod === 'daily'
+          ? 'Daily'
+          : this.selectedPeriod === 'weekly'
+          ? 'Weekly'
+          : 'Monthly'
+      )
+      .set('level', '111')
+      .set('scenario_id', '1');
+  
+    this.http
+      .get<FeatureImportanceResponse>(
+        `${this.apiBase}/api/forecast/feature-importance-selected`,
+        { params }
+      )
+      .subscribe({
+        next: (response) => {
+          this.featureImportance = response;
+          this.featureImportanceLoading = false;
+        },
+  
+        error: (error) => {
+          console.error('Feature importance error:', error);
+  
+          this.featureImportanceError =
+            error?.error?.detail ||
+            'Unable to calculate feature importance.';
+  
+          this.featureImportanceLoading = false;
+        },
+      });
+  }
+
 
   // Data from backend
   weatherSales: WeatherSalesPoint[] = [];
@@ -106,6 +371,8 @@ export class WeatherCorrelationComponent implements OnInit {
     TempMax: null,
     RainMm: null,
     SnowCm: null,
+    WindMax: null,
+    SunHours: null,
   };
 
   // Derived for UI
@@ -183,7 +450,18 @@ export class WeatherCorrelationComponent implements OnInit {
   // ----------------------------
   // Event handlers
   // ----------------------------
+
+
   onSelectionChange(): void {
+    this.forecastImpact = null;
+    this.forecastImpactError = '';
+  
+    this.factorContribution = null;
+    this.factorContributionError = '';
+  
+    this.featureImportance = null;
+    this.featureImportanceError = '';
+  
     if (this.canLoad()) {
       this.loadAll();
     }
@@ -360,6 +638,49 @@ export class WeatherCorrelationComponent implements OnInit {
   getMetricLabel(key: string): string {
     const opt = this.metricOptions.find((m) => m.key === key);
     return opt ? opt.label : key;
+  }
+
+  getFeatureLabel(feature: string): string {
+    const labels: Record<string, string> = {
+      lag_1: 'Previous Period Demand',
+      lag_4: 'Demand 4 Periods Ago',
+      lag_13: 'Demand 13 Periods Ago',
+  
+      roll_mean_4: '4-Period Average Demand',
+      roll_mean_13: '13-Period Average Demand',
+  
+      roll_min_4: '4-Period Minimum Demand',
+      roll_min_13: '13-Period Minimum Demand',
+  
+      roll_max_4: '4-Period Maximum Demand',
+      roll_max_13: '13-Period Maximum Demand',
+  
+      roll_std_4: '4-Period Demand Variation',
+      roll_std_13: '13-Period Demand Variation',
+  
+      NetPrice: 'Net Price',
+      ListPrice: 'List Price',
+      DiscountRate: 'Discount Rate',
+  
+      TavgC: 'Average Temperature',
+      TminC: 'Minimum Temperature',
+      TmaxC: 'Maximum Temperature',
+      PrecipMM: 'Precipitation',
+      WindMaxMS: 'Maximum Wind Speed',
+      SunHours: 'Sunshine Hours',
+  
+      PromoFlag: 'Promotion Active',
+      PromoDepth: 'Promotion Depth',
+      PromoUplift: 'Promotion Uplift',
+  
+      year: 'Year',
+      month: 'Month',
+      weekofyear: 'Week of Year',
+      dow: 'Day of Week',
+      doy: 'Day of Year',
+    };
+  
+    return labels[feature] || feature;
   }
 
   private roundNice(v: number): number {

@@ -61,7 +61,7 @@ export const navItems: INavData[] = [
         icon: 'nav-icon-bullet'
       },
       {
-        name: 'Weather Correlation',
+        name: 'Forecast Diagnostics',
         url: '/data/weather-correlation',
         icon: 'nav-icon-bullet'
       },
